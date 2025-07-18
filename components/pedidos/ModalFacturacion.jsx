@@ -26,7 +26,7 @@ export function ModalDescuentos({
       // Descuento directo sobre el total con IVA
       setDescuentoCalculado(Math.min(valor, totalConIva || 0));
     } else {
-      // Porcentaje sobre el SUBTOTAL (sin IVA)
+      // ✅ CORREGIDO: Porcentaje sobre el SUBTOTAL (importe neto)
       const porcentaje = Math.min(Math.max(valor, 0), 100);
       setDescuentoCalculado(((subtotalSinIva || 0) * porcentaje) / 100);
     }
@@ -88,7 +88,8 @@ export function ModalDescuentos({
                   onChange={(e) => setTipoDescuento(e.target.value)}
                   className="mr-2"
                 />
-                <span className="text-sm">📊 Descuento porcentual (% sobre IVA)</span>
+                {/* ✅ CORREGIDO: Texto actualizado para reflejar que es sobre subtotal */}
+                <span className="text-sm">📊 Descuento porcentual (% sobre subtotal)</span>
               </label>
             </div>
           </div>
@@ -114,7 +115,8 @@ export function ModalDescuentos({
             </div>
             {tipoDescuento === 'porcentaje' && (
               <p className="text-xs text-gray-500 mt-1">
-                Se aplicará sobre el IVA total: ${(ivaTotal || 0).toFixed(2)}
+                {/* ✅ CORREGIDO: Texto explicativo actualizado */}
+                Se aplicará sobre el subtotal (importe neto): ${(subtotalSinIva || 0).toFixed(2)}
               </p>
             )}
           </div>
@@ -124,6 +126,14 @@ export function ModalDescuentos({
             <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded">
               <h4 className="font-medium text-sm mb-2">Vista previa del descuento:</h4>
               <div className="space-y-1 text-xs">
+                <div className="flex justify-between">
+                  <span>Subtotal (neto):</span>
+                  <span>${(subtotalSinIva || 0).toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>IVA:</span>
+                  <span>${(ivaTotal || 0).toFixed(2)}</span>
+                </div>
                 <div className="flex justify-between">
                   <span>Total original:</span>
                   <span>${(totalConIva || 0).toFixed(2)}</span>
@@ -190,7 +200,7 @@ export default function ModalFacturacion({
 
   // ✅ FUNCIÓN PARA DETERMINAR TIPO FISCAL AUTOMÁTICAMENTE
   const determinarTipoFiscal = (condicionIva) => {
-    if (!condicionIva) return 'A'; // Por defecto
+    if (!condicionIva) return 'C'; // Por defecto
 
     const condicion = condicionIva.toLowerCase().trim();
     
@@ -328,11 +338,12 @@ export default function ModalFacturacion({
     }
   };
 
-  // Aplicar descuento
+  // ✅ CORREGIDO: Aplicar descuento correctamente
   const handleAplicarDescuento = (descuento) => {
     setDescuentoAplicado(descuento);
     
-    // Actualizar el total con el descuento
+    // ✅ El descuento ya viene calculado correctamente desde el modal
+    // Solo actualizamos el total restando el descuento del total original
     const totalOriginal = subtotalSinIva + ivaTotal;
     const nuevoTotal = totalOriginal - descuento.descuentoCalculado;
     setTotalConIva(nuevoTotal);
@@ -450,7 +461,7 @@ export default function ModalFacturacion({
                     <option value="">Seleccionar cuenta...</option>
                     {cuentas.map(cuenta => (
                       <option key={cuenta.id} value={cuenta.id}>
-                        {cuenta.numero} - {cuenta.nombre}
+                        {cuenta.nombre}
                       </option>
                     ))}
                   </select>
@@ -561,7 +572,7 @@ export default function ModalFacturacion({
                       <p className="text-sm text-yellow-700">
                         {descuentoAplicado.tipo === 'numerico' 
                           ? `Descuento fijo: $${descuentoAplicado.descuentoCalculado.toFixed(2)}`
-                          : `${descuentoAplicado.valor}% sobre IVA: $${descuentoAplicado.descuentoCalculado.toFixed(2)}`
+                          : `${descuentoAplicado.valor}% sobre subtotal: $${descuentoAplicado.descuentoCalculado.toFixed(2)}`
                         }
                       </p>
                     </div>
