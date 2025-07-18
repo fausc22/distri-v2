@@ -8,7 +8,7 @@ import useAuth from '../../hooks/useAuth';
 import { useFacturacion } from '../../hooks/pedidos/useFacturacion';
 import { ModalPDFUniversal, BotonGenerarPDFUniversal } from '../shared/ModalPDFUniversal';
 
-// Modal de descuentos corregido
+// ✅ MODAL DE DESCUENTOS CORREGIDO - APLICA % SOBRE SUBTOTAL
 export function ModalDescuentos({
   mostrar, 
   onClose, 
@@ -33,11 +33,11 @@ export function ModalDescuentos({
       // Descuento directo sobre el total con IVA
       setDescuentoCalculado(Math.min(valor, totalConIva || 0));
     } else {
-      // Porcentaje sobre el IVA TOTAL
+      // ✅ CORREGIDO: Porcentaje sobre el SUBTOTAL (importe neto)
       const porcentaje = Math.min(Math.max(valor, 0), 100);
-      setDescuentoCalculado(((ivaTotal || 0) * porcentaje) / 100);
+      setDescuentoCalculado(((subtotalSinIva || 0) * porcentaje) / 100);
     }
-  }, [valorDescuento, tipoDescuento, ivaTotal, totalConIva]);
+  }, [valorDescuento, tipoDescuento, subtotalSinIva, totalConIva]);
 
   const handleAplicar = () => {
     if (descuentoCalculado > 0) {
@@ -96,7 +96,8 @@ export function ModalDescuentos({
                   onChange={(e) => setTipoDescuento(e.target.value)}
                   className="mr-2"
                 />
-                <span className="text-sm">📊 Descuento porcentual (% sobre IVA)</span>
+                {/* ✅ CORREGIDO: Texto actualizado */}
+                <span className="text-sm">📊 Descuento porcentual (% sobre subtotal)</span>
               </label>
             </div>
           </div>
@@ -121,7 +122,8 @@ export function ModalDescuentos({
             </div>
             {tipoDescuento === 'porcentaje' && (
               <p className="text-xs text-gray-500 mt-1">
-                Se aplicará sobre el IVA total: ${(ivaTotal || 0).toFixed(2)}
+                {/* ✅ CORREGIDO: Texto explicativo actualizado */}
+                Se aplicará sobre el subtotal (importe neto): ${(subtotalSinIva || 0).toFixed(2)}
               </p>
             )}
           </div>
@@ -130,6 +132,14 @@ export function ModalDescuentos({
             <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded">
               <h4 className="font-medium text-sm mb-2">Vista previa del descuento:</h4>
               <div className="space-y-1 text-xs">
+                <div className="flex justify-between">
+                  <span>Subtotal (neto):</span>
+                  <span>${(subtotalSinIva || 0).toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>IVA:</span>
+                  <span>${(ivaTotal || 0).toFixed(2)}</span>
+                </div>
                 <div className="flex justify-between">
                   <span>Total original:</span>
                   <span>${(totalConIva || 0).toFixed(2)}</span>
@@ -167,7 +177,7 @@ export function ModalDescuentos({
   );
 }
 
-// Modal de facturación principal corregido
+// ✅ MODAL DE FACTURACIÓN CORREGIDO
 export function ModalFacturacionCompleto({ 
   mostrar, 
   onClose, 
@@ -194,6 +204,8 @@ export function ModalFacturacionCompleto({
   // Inicializar montos al abrir el modal
   useEffect(() => {
     if (mostrar && productos && productos.length > 0) {
+      console.log('🧾 Inicializando modal de facturación...');
+      
       const subtotal = productos.reduce((acc, prod) => acc + (Number(prod.subtotal) || 0), 0);
       const iva = productos.reduce((acc, prod) => acc + (Number(prod.iva) || 0), 0);
       const total = subtotal + iva;
@@ -202,6 +214,12 @@ export function ModalFacturacionCompleto({
       setIvaTotal(iva);
       setTotalConIva(total);
       setDescuentoAplicado(null);
+
+      console.log('💰 Montos calculados:', {
+        subtotal: subtotal.toFixed(2),
+        iva: iva.toFixed(2),
+        total: total.toFixed(2)
+      });
     }
   }, [mostrar, productos]);
 
@@ -213,6 +231,7 @@ export function ModalFacturacionCompleto({
 
   const actualizarMontos = (campo, valor) => {
     const numeroValor = parseFloat(valor) || 0;
+    
     switch (campo) {
       case 'subtotal':
         setSubtotalSinIva(numeroValor);
@@ -241,11 +260,12 @@ export function ModalFacturacionCompleto({
 
   const handleAplicarDescuento = (descuento) => {
     setDescuentoAplicado(descuento);
-    // NO modificar totalConIva aquí, se calculará en el resumen
+    console.log('✅ Descuento aplicado:', descuento);
   };
 
   const limpiarDescuento = () => {
     setDescuentoAplicado(null);
+    console.log('🧹 Descuento eliminado');
   };
 
   const handleConfirmar = async () => {
@@ -270,6 +290,7 @@ export function ModalFacturacionCompleto({
     };
 
     console.log('🧾 Enviando datos de facturación:', datosFacturacion);
+    
     const resultado = await facturarPedido(datosFacturacion);
     
     if (resultado.success) {
@@ -319,6 +340,7 @@ export function ModalFacturacionCompleto({
               </button>
             </div>
             
+            {/* Información del pedido */}
             <div className="mb-6 p-4 bg-blue-50 rounded-lg">
               <h3 className="font-semibold text-blue-800 mb-2">Información del Pedido</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
@@ -334,9 +356,16 @@ export function ModalFacturacionCompleto({
                 <div>
                   <span className="font-medium">Productos:</span> {productos?.length || 0}
                 </div>
+                <div className="sm:col-span-2">
+                  <span className="font-medium">Condición IVA:</span> 
+                  <span className="ml-1 px-2 py-1 bg-yellow-100 text-yellow-800 rounded text-xs">
+                    {pedido?.cliente_condicion || 'No especificada'}
+                  </span>
+                </div>
               </div>
             </div>
             
+            {/* Selects */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -356,7 +385,8 @@ export function ModalFacturacionCompleto({
                     <option value="">Seleccionar cuenta...</option>
                     {cuentas.map(cuenta => (
                       <option key={cuenta.id} value={cuenta.id}>
-                        {cuenta.nombre} - Saldo: ${Number(cuenta.saldo).toFixed(2)}
+                        {/* ✅ CORREGIDO: Solo mostrar nombre */}
+                        {cuenta.nombre}
                       </option>
                     ))}
                   </select>
@@ -379,6 +409,7 @@ export function ModalFacturacionCompleto({
               </div>
             </div>
             
+            {/* Campos de montos */}
             <div className="mb-6">
               <h3 className="font-semibold text-gray-800 mb-4">Montos de Facturación</h3>
               <div className="space-y-4">
@@ -433,6 +464,7 @@ export function ModalFacturacionCompleto({
               </div>
             </div>
             
+            {/* Sección de descuentos */}
             <div className="mb-6 p-4 bg-gray-50 rounded-lg">
               <div className="flex justify-between items-center mb-2">
                 <h3 className="font-semibold text-gray-800">Descuentos</h3>
@@ -453,7 +485,7 @@ export function ModalFacturacionCompleto({
                       <p className="text-sm text-yellow-700">
                         {descuentoAplicado.tipo === 'numerico' 
                           ? `Descuento fijo: $${descuentoAplicado.descuentoCalculado.toFixed(2)}`
-                          : `${descuentoAplicado.valor}% sobre IVA: $${descuentoAplicado.descuentoCalculado.toFixed(2)}`
+                          : `${descuentoAplicado.valor}% sobre subtotal: $${descuentoAplicado.descuentoCalculado.toFixed(2)}`
                         }
                       </p>
                     </div>
@@ -471,6 +503,7 @@ export function ModalFacturacionCompleto({
               )}
             </div>
             
+            {/* Resumen final */}
             <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
               <h3 className="font-semibold text-green-800 mb-2">Resumen Final</h3>
               <div className="space-y-1 text-sm">
@@ -499,6 +532,7 @@ export function ModalFacturacionCompleto({
               </div>
             </div>
             
+            {/* Botones de acción */}
             <div className="flex flex-col sm:flex-row gap-4">
               <button
                 onClick={handleConfirmar}
@@ -529,6 +563,7 @@ export function ModalFacturacionCompleto({
         </div>
       </div>
        
+      {/* Modal de descuentos */}
       {mostrarModalDescuentos && (
         <ModalDescuentos 
           mostrar={mostrarModalDescuentos} 
@@ -543,7 +578,7 @@ export function ModalFacturacionCompleto({
   );
 }
 
-// InformacionCliente component (sin cambios importantes)
+// ✅ RESTO DE COMPONENTES SIN CAMBIOS (InformacionCliente, etc.)
 export function InformacionCliente({ pedido, expandido, onToggleExpansion, mostrarModalFacturacion, setMostrarModalFacturacion, productos, handleConfirmarFacturacion }) {
   return (
     <div className="bg-blue-50 rounded-lg overflow-hidden mb-4">
@@ -554,7 +589,7 @@ export function InformacionCliente({ pedido, expandido, onToggleExpansion, mostr
         <div>
           <h3 className="font-bold text-lg text-blue-800">Cliente: {pedido.cliente_nombre}</h3>
           <p className="text-blue-600 text-sm">
-            {pedido.cliente_ciudad || 'Ciudad no especificada'}
+            {pedido.cliente_ciudad || 'Ciudad no especificadas'}
             {pedido.cliente_provincia && `, ${pedido.cliente_provincia}`}
           </p>
         </div>
