@@ -238,7 +238,3 @@ export default function ReportesFinancieros() {
   );
 }
 
-// Layout personalizado para esta página (opcional)
-ReportesFinancieros.getLayout = function getLayout(page) {
-  return page; // Sin DefaultLayout para tener control total del diseño
-};
