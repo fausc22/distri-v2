@@ -73,7 +73,15 @@ const initialState = {
     gananciasPorCiudad: null,
     productosMasRentables: null,
     productosMasVendidos: null,
-    balanceGeneral: null
+    balanceGeneral: null,
+
+    balancePorCuenta: null,
+    flujoDeFondos: null,
+    ventasPorVendedor: null,
+    distribucionIngresos: null,
+    gastosPorCategoria: null,
+    aniosDisponibles: null
+
   },
   dashboardData: null,
   loading: {},
@@ -90,7 +98,7 @@ export function ReportesProvider({ children }) {
   const reportesConfig = useReportes();
   const finanzasApi = useFinanzasData();
 
-  // Función para cargar datos específicos
+    // Función para cargar datos específicos
   const cargarDatos = async (tipoReporte, filtrosCustom = {}) => {
     dispatch({ type: 'SET_LOADING', payload: { key: tipoReporte, loading: true } });
     dispatch({ type: 'CLEAR_ERROR' });
@@ -100,6 +108,7 @@ export function ReportesProvider({ children }) {
       let resultado;
 
       switch (tipoReporte) {
+        // Casos existentes (mantener todos)
         case 'resumenFinanciero':
           resultado = await finanzasApi.obtenerResumenFinanciero(filtros);
           break;
@@ -124,6 +133,27 @@ export function ReportesProvider({ children }) {
         case 'balanceGeneral':
           resultado = await finanzasApi.obtenerBalanceGeneral(filtros);
           break;
+        
+        // ✅ NUEVOS CASOS
+        case 'balancePorCuenta':
+          resultado = await finanzasApi.obtenerBalancePorCuenta(filtros);
+          break;
+        case 'flujoDeFondos':
+          resultado = await finanzasApi.obtenerFlujoDeFondos(filtros);
+          break;
+        case 'ventasPorVendedor':
+          resultado = await finanzasApi.obtenerVentasPorVendedor(filtros);
+          break;
+        case 'distribucionIngresos':
+          resultado = await finanzasApi.obtenerDistribucionIngresos(filtros);
+          break;
+        case 'gastosPorCategoria':
+          resultado = await finanzasApi.obtenerGastosPorCategoria(filtros);
+          break;
+        case 'aniosDisponibles':
+          resultado = await finanzasApi.obtenerAniosDisponibles();
+          break;
+        
         default:
           throw new Error(`Tipo de reporte no reconocido: ${tipoReporte}`);
       }
@@ -150,50 +180,56 @@ export function ReportesProvider({ children }) {
 
   // Función para cargar dashboard completo
   const cargarDashboard = async (filtrosCustom = {}) => {
-    dispatch({ type: 'REFRESH_DATA' });
+  dispatch({ type: 'REFRESH_DATA' });
 
-    try {
-      const filtros = { ...reportesConfig.filtros, ...filtrosCustom };
-      
-      // Cargar datos principales para el dashboard
-      const resultados = await Promise.allSettled([
-        finanzasApi.obtenerResumenFinanciero(filtros),
-        finanzasApi.obtenerGananciasDetalladas(filtros),
-        finanzasApi.obtenerGananciasPorProducto({ ...filtros, limite: 5 }),
-        finanzasApi.obtenerGananciasPorEmpleado(filtros),
-        finanzasApi.obtenerGananciasPorCiudad({ ...filtros, limite: 5 })
-      ]);
+  try {
+    const filtros = { ...reportesConfig.filtros, ...filtrosCustom };
+    
+    // ✅ Cargar datos principales + nuevos datos para dashboard
+    const resultados = await Promise.allSettled([
+      finanzasApi.obtenerResumenFinanciero(filtros),
+      finanzasApi.obtenerGananciasDetalladas(filtros),
+      finanzasApi.obtenerGananciasPorProducto({ ...filtros, limite: 5 }),
+      finanzasApi.obtenerGananciasPorEmpleado(filtros),
+      finanzasApi.obtenerGananciasPorCiudad({ ...filtros, limite: 5 }),
+      finanzasApi.obtenerVentasPorVendedor(filtros), // ✅ NUEVO
+      finanzasApi.obtenerBalanceGeneral(filtros),    // ✅ NUEVO
+      finanzasApi.obtenerProductosMasVendidos({ ...filtros, limite: 5 }) // ✅ NUEVO
+    ]);
 
-      // Procesar resultados
-      const dashboardData = {
-        resumen: resultados[0].status === 'fulfilled' ? resultados[0].value : null,
-        ganancias: resultados[1].status === 'fulfilled' ? resultados[1].value : null,
-        topProductos: resultados[2].status === 'fulfilled' ? resultados[2].value : null,
-        empleados: resultados[3].status === 'fulfilled' ? resultados[3].value : null,
-        ciudades: resultados[4].status === 'fulfilled' ? resultados[4].value : null
-      };
+    // Procesar resultados
+    const dashboardData = {
+      resumen: resultados[0].status === 'fulfilled' ? resultados[0].value : null,
+      ganancias: resultados[1].status === 'fulfilled' ? resultados[1].value : null,
+      topProductos: resultados[2].status === 'fulfilled' ? resultados[2].value : null,
+      empleados: resultados[3].status === 'fulfilled' ? resultados[3].value : null,
+      ciudades: resultados[4].status === 'fulfilled' ? resultados[4].value : null,
+      vendedores: resultados[5].status === 'fulfilled' ? resultados[5].value : null, // ✅ NUEVO
+      balance: resultados[6].status === 'fulfilled' ? resultados[6].value : null,    // ✅ NUEVO
+      topVendidos: resultados[7].status === 'fulfilled' ? resultados[7].value : null // ✅ NUEVO
+    };
 
-      // Verificar si hay errores
-      const errores = resultados
-        .filter(resultado => resultado.status === 'rejected')
-        .map(resultado => resultado.reason?.message || 'Error desconocido');
+    // Verificar si hay errores
+    const errores = resultados
+      .filter(resultado => resultado.status === 'rejected')
+      .map(resultado => resultado.reason?.message || 'Error desconocido');
 
-      if (errores.length > 0) {
-        dispatch({ type: 'SET_ERROR', payload: `Errores cargando: ${errores.join(', ')}` });
-      }
-
-      dispatch({ type: 'SET_DASHBOARD_DATA', payload: dashboardData });
-      
-      return { success: true, data: dashboardData, errores };
-
-    } catch (error) {
-      const errorMsg = error.message || 'Error cargando dashboard';
-      dispatch({ type: 'SET_ERROR', payload: errorMsg });
-      return { success: false, error: errorMsg };
-    } finally {
-      dispatch({ type: 'REFRESH_COMPLETE' });
+    if (errores.length > 0) {
+      dispatch({ type: 'SET_ERROR', payload: `Errores cargando: ${errores.join(', ')}` });
     }
-  };
+
+    dispatch({ type: 'SET_DASHBOARD_DATA', payload: dashboardData });
+    
+    return { success: true, data: dashboardData, errores };
+
+  } catch (error) {
+    const errorMsg = error.message || 'Error cargando dashboard';
+    dispatch({ type: 'SET_ERROR', payload: errorMsg });
+    return { success: false, error: errorMsg };
+  } finally {
+    dispatch({ type: 'REFRESH_COMPLETE' });
+  }
+};
 
   // Función para actualizar todo
   const actualizarTodo = async () => {

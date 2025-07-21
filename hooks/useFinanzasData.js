@@ -314,29 +314,262 @@ export function useFinanzasData() {
     return `${parseFloat(value).toFixed(1)}%`;
   }, []);
 
+
+  const obtenerVentasPorVendedor = useCallback(async (filtros = {}) => {
+  const endpoint = 'ventas-vendedores';
+  setLoadingState(endpoint, true);
+  setError(null);
+
+  try {
+    const params = new URLSearchParams();
+    Object.entries(filtros).forEach(([key, value]) => {
+      if (value && value !== '') {
+        params.append(key, value);
+      }
+    });
+
+    const response = await axiosAuth.get(`/finanzas/ventas-vendedores?${params.toString()}`);
+    
+    if (response.data.success) {
+      return { success: true, data: response.data.data };
+    } else {
+      return handleError(new Error(response.data.message), endpoint);
+    }
+  } catch (error) {
+    return handleError(error, endpoint);
+  } finally {
+    setLoadingState(endpoint, false);
+  }
+}, []);
+
+// 📊 OBTENER BALANCE POR CUENTA
+const obtenerBalancePorCuenta = useCallback(async (filtros = {}) => {
+  const endpoint = 'balance-cuenta';
+  setLoadingState(endpoint, true);
+  setError(null);
+
+  try {
+    const params = new URLSearchParams();
+    Object.entries(filtros).forEach(([key, value]) => {
+      if (value && value !== '') {
+        params.append(key, value);
+      }
+    });
+
+    const response = await axiosAuth.get(`/finanzas/balance-cuenta?${params.toString()}`);
+    
+    if (response.data.success) {
+      return { success: true, data: response.data.data };
+    } else {
+      return handleError(new Error(response.data.message), endpoint);
+    }
+  } catch (error) {
+    return handleError(error, endpoint);
+  } finally {
+    setLoadingState(endpoint, false);
+  }
+}, []);
+
+// 💰 OBTENER FLUJO DE FONDOS
+const obtenerFlujoDeFondos = useCallback(async (filtros = {}) => {
+  const endpoint = 'flujo-fondos';
+  setLoadingState(endpoint, true);
+  setError(null);
+
+  try {
+    const params = new URLSearchParams();
+    Object.entries(filtros).forEach(([key, value]) => {
+      if (value && value !== '') {
+        params.append(key, value);
+      }
+    });
+
+    const response = await axiosAuth.get(`/finanzas/flujo-fondos?${params.toString()}`);
+    
+    if (response.data.success) {
+      return { success: true, data: response.data.data, totales: response.data.totales };
+    } else {
+      return handleError(new Error(response.data.message), endpoint);
+    }
+  } catch (error) {
+    return handleError(error, endpoint);
+  } finally {
+    setLoadingState(endpoint, false);
+  }
+}, []);
+
+// 📈 OBTENER DISTRIBUCIÓN DE INGRESOS
+const obtenerDistribucionIngresos = useCallback(async (filtros = {}) => {
+  const endpoint = 'distribucion-ingresos';
+  setLoadingState(endpoint, true);
+  setError(null);
+
+  try {
+    const params = new URLSearchParams();
+    Object.entries(filtros).forEach(([key, value]) => {
+      if (value && value !== '') {
+        params.append(key, value);
+      }
+    });
+
+    const response = await axiosAuth.get(`/finanzas/distribucion-ingresos?${params.toString()}`);
+    
+    if (response.data.success) {
+      return { success: true, data: response.data.data, total: response.data.total };
+    } else {
+      return handleError(new Error(response.data.message), endpoint);
+    }
+  } catch (error) {
+    return handleError(error, endpoint);
+  } finally {
+    setLoadingState(endpoint, false);
+  }
+}, []);
+
+// 🏷️ OBTENER GASTOS POR CATEGORÍA
+const obtenerGastosPorCategoria = useCallback(async (filtros = {}) => {
+  const endpoint = 'gastos-categoria';
+  setLoadingState(endpoint, true);
+  setError(null);
+
+  try {
+    const params = new URLSearchParams();
+    Object.entries(filtros).forEach(([key, value]) => {
+      if (value && value !== '') {
+        params.append(key, value);
+      }
+    });
+
+    const response = await axiosAuth.get(`/finanzas/gastos-categoria?${params.toString()}`);
+    
+    if (response.data.success) {
+      return { success: true, data: response.data.data, total: response.data.total };
+    } else {
+      return handleError(new Error(response.data.message), endpoint);
+    }
+  } catch (error) {
+    return handleError(error, endpoint);
+  } finally {
+    setLoadingState(endpoint, false);
+  }
+}, []);
+
+// 📅 OBTENER AÑOS DISPONIBLES
+const obtenerAniosDisponibles = useCallback(async () => {
+  const endpoint = 'anios-disponibles';
+  setLoadingState(endpoint, true);
+  setError(null);
+
+  try {
+    const response = await axiosAuth.get('/finanzas/anios-disponibles');
+    
+    if (response.data.success) {
+      return { success: true, data: response.data.data };
+    } else {
+      return handleError(new Error(response.data.message), endpoint);
+    }
+  } catch (error) {
+    return handleError(error, endpoint);
+  } finally {
+    setLoadingState(endpoint, false);
+  }
+}, []);
+
+// 🔄 FUNCIÓN PARA RECARGAR TODOS LOS DATOS EXTENDIDA
+const recargarTodosLosDatosExtendido = useCallback(async (filtros = {}) => {
+  setError(null);
+  
+  const resultados = await Promise.allSettled([
+    obtenerResumenFinanciero(filtros),
+    obtenerGananciasDetalladas(filtros),
+    obtenerGananciasPorProducto({ ...filtros, limite: 15 }),
+    obtenerGananciasPorEmpleado(filtros),
+    obtenerGananciasPorCiudad({ ...filtros, limite: 15 }),
+    obtenerProductosMasRentables({ ...filtros, limite: 15 }),
+    obtenerProductosMasVendidos({ ...filtros, limite: 15 }),
+    obtenerBalanceGeneral(filtros),
+    obtenerBalancePorCuenta(filtros),
+    obtenerFlujoDeFondos(filtros),
+    obtenerVentasPorVendedor(filtros),
+    obtenerDistribucionIngresos(filtros),
+    obtenerGastosPorCategoria(filtros)
+  ]);
+
+  const errores = resultados
+    .filter(resultado => resultado.status === 'rejected')
+    .map(resultado => resultado.reason);
+
+  if (errores.length > 0) {
+    console.error('Errores cargando datos extendidos:', errores);
+    toast.error(`Error cargando ${errores.length} conjunto(s) de datos`);
+  } else {
+    toast.success('Todos los datos actualizados exitosamente');
+  }
+
   return {
-    // Estados
-    loading,
-    error,
+    resumenFinanciero: resultados[0].status === 'fulfilled' ? resultados[0].value : null,
+    gananciasDetalladas: resultados[1].status === 'fulfilled' ? resultados[1].value : null,
+    gananciasPorProducto: resultados[2].status === 'fulfilled' ? resultados[2].value : null,
+    gananciasPorEmpleado: resultados[3].status === 'fulfilled' ? resultados[3].value : null,
+    gananciasPorCiudad: resultados[4].status === 'fulfilled' ? resultados[4].value : null,
+    productosMasRentables: resultados[5].status === 'fulfilled' ? resultados[5].value : null,
+    productosMasVendidos: resultados[6].status === 'fulfilled' ? resultados[6].value : null,
+    balanceGeneral: resultados[7].status === 'fulfilled' ? resultados[7].value : null,
+    balancePorCuenta: resultados[8].status === 'fulfilled' ? resultados[8].value : null,
+    flujoDeFondos: resultados[9].status === 'fulfilled' ? resultados[9].value : null,
+    ventasPorVendedor: resultados[10].status === 'fulfilled' ? resultados[10].value : null,
+    distribucionIngresos: resultados[11].status === 'fulfilled' ? resultados[11].value : null,
+    gastosPorCategoria: resultados[12].status === 'fulfilled' ? resultados[12].value : null
+  };
+}, [
+  obtenerResumenFinanciero,
+  obtenerGananciasDetalladas,
+  obtenerGananciasPorProducto,
+  obtenerGananciasPorEmpleado,
+  obtenerGananciasPorCiudad,
+  obtenerProductosMasRentables,
+  obtenerProductosMasVendidos,
+  obtenerBalanceGeneral,
+  obtenerBalancePorCuenta,
+  obtenerFlujoDeFondos,
+  obtenerVentasPorVendedor,
+  obtenerDistribucionIngresos,
+  obtenerGastosPorCategoria
+]);
 
-    // Funciones principales
-    obtenerGananciasDetalladas,
-    obtenerGananciasPorProducto,
-    obtenerGananciasPorEmpleado,
-    obtenerGananciasPorCiudad,
-    obtenerResumenFinanciero,
-    obtenerProductosMasRentables,
-    obtenerBalanceGeneral,
-    obtenerProductosMasVendidos,
+  return {
+  loading,
+  error,
 
-    // Utilidades
-    recargarTodosLosDatos,
-    limpiarError,
-    formatCurrency,
-    formatPercentage,
+  // Funciones principales existentes (mantener todas)
+  obtenerGananciasDetalladas,
+  obtenerGananciasPorProducto,
+  obtenerGananciasPorEmpleado,
+  obtenerGananciasPorCiudad,
+  obtenerResumenFinanciero,
+  obtenerProductosMasRentables,
+  obtenerBalanceGeneral,
+  obtenerProductosMasVendidos,
 
-    // Helpers para verificar loading
-    isLoading: (endpoint) => loading[endpoint] || false,
-    isAnyLoading: Object.values(loading).some(Boolean)
+  // ✅ NUEVAS FUNCIONES
+  obtenerVentasPorVendedor,
+  obtenerBalancePorCuenta,
+  obtenerFlujoDeFondos,
+  obtenerDistribucionIngresos,
+  obtenerGastosPorCategoria,
+  obtenerAniosDisponibles,
+
+  // Utilidades existentes (mantener)
+  recargarTodosLosDatos,
+  limpiarError,
+  formatCurrency,
+  formatPercentage,
+
+  // ✅ NUEVA UTILIDAD EXTENDIDA
+  recargarTodosLosDatosExtendido,
+
+  // Helpers para verificar loading (mantener)
+  isLoading: (endpoint) => loading[endpoint] || false,
+  isAnyLoading: Object.values(loading).some(Boolean)
   };
 }
