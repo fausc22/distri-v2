@@ -183,20 +183,7 @@ function ReportesContent() {
           )}
         </div>
 
-        {/* Footer con información del sistema */}
-        <div className="mt-12 border-t border-gray-200 pt-6">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between text-sm text-gray-500">
-            <div>
-              <p>Sistema de Reportes Financieros VERTIMAR</p>
-              <p className="mt-1">Datos actualizados en tiempo real desde la base de datos</p>
-            </div>
-            
-            <div className="mt-3 sm:mt-0 text-right">
-              <p>Versión 2.0</p>
-              <p className="mt-1">Desarrollado con ❤️ para VERTIMAR</p>
-            </div>
-          </div>
-        </div>
+       
       </div>
 
       {/* Toast Container */}

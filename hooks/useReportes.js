@@ -1,4 +1,4 @@
-// hooks/useReportes.js
+// hooks/useReportes.js - VERSIÓN MEJORADA SIN FILTRO SEMANA
 import { useState, useEffect, useMemo } from 'react';
 import { toast } from 'react-hot-toast';
 
@@ -7,28 +7,31 @@ export function useReportes() {
   const [filtros, setFiltros] = useState({
     desde: '',
     hasta: '',
-    periodo: 'mensual', // diario, mensual, anual
+    periodo: 'mensual',
     empleado_id: '',
     ciudad: '',
     limite: 20
   });
 
-  // Estado para el reporte activo
   const [reporteActivo, setReporteActivo] = useState('dashboard');
-
-  // Estado para mostrar/ocultar filtros
   const [mostrarFiltros, setMostrarFiltros] = useState(false);
+
+  // ✅ Estado para rango de datos disponibles
+  const [rangoDisponible, setRangoDisponible] = useState({
+    fechaMinima: null,
+    fechaMaxima: null,
+    tieneVentas: false
+  });
 
   // Función para aplicar filtros por defecto al cargar
   useEffect(() => {
-    // Establecer fechas por defecto (último mes)
     const hoy = new Date();
-    const unMesAtras = new Date();
-    unMesAtras.setMonth(hoy.getMonth() - 1);
+    const hace30Dias = new Date();
+    hace30Dias.setDate(hoy.getDate() - 30);
 
     setFiltros(prev => ({
       ...prev,
-      desde: prev.desde || unMesAtras.toISOString().split('T')[0],
+      desde: prev.desde || hace30Dias.toISOString().split('T')[0],
       hasta: prev.hasta || hoy.toISOString().split('T')[0]
     }));
   }, []);
@@ -44,11 +47,11 @@ export function useReportes() {
   // Función para limpiar filtros
   const limpiarFiltros = () => {
     const hoy = new Date();
-    const unMesAtras = new Date();
-    unMesAtras.setMonth(hoy.getMonth() - 1);
+    const hace30Dias = new Date();
+    hace30Dias.setDate(hoy.getDate() - 30);
 
     setFiltros({
-      desde: unMesAtras.toISOString().split('T')[0],
+      desde: hace30Dias.toISOString().split('T')[0],
       hasta: hoy.toISOString().split('T')[0],
       periodo: 'mensual',
       empleado_id: '',
@@ -59,7 +62,7 @@ export function useReportes() {
     toast.success('Filtros restablecidos');
   };
 
-  // Función para establecer período predefinido
+  // ✅ Función mejorada para establecer período predefinido
   const setPeriodoPredefinido = (periodo) => {
     const hoy = new Date();
     let desde = new Date();
@@ -74,8 +77,9 @@ export function useReportes() {
           periodo: 'diario'
         }));
         break;
-      case 'semana':
-        desde.setDate(hoy.getDate() - 7);
+        
+      case 'mes':
+        desde.setMonth(hoy.getMonth() - 1);
         setFiltros(prev => ({
           ...prev,
           desde: desde.toISOString().split('T')[0],
@@ -83,15 +87,7 @@ export function useReportes() {
           periodo: 'diario'
         }));
         break;
-      case 'mes':
-        desde.setMonth(hoy.getMonth() - 1);
-        setFiltros(prev => ({
-          ...prev,
-          desde: desde.toISOString().split('T')[0],
-          hasta: hoy.toISOString().split('T')[0],
-          periodo: 'mensual'
-        }));
-        break;
+        
       case 'trimestre':
         desde.setMonth(hoy.getMonth() - 3);
         setFiltros(prev => ({
@@ -101,15 +97,18 @@ export function useReportes() {
           periodo: 'mensual'
         }));
         break;
+        
       case 'año':
-        desde.setFullYear(hoy.getFullYear() - 1);
+        // ✅ CORREGIDO: Período de 6 meses en lugar de año completo
+        desde.setMonth(hoy.getMonth() - 6);
         setFiltros(prev => ({
           ...prev,
           desde: desde.toISOString().split('T')[0],
           hasta: hoy.toISOString().split('T')[0],
-          periodo: 'anual'
+          periodo: 'mensual'
         }));
         break;
+        
       default:
         break;
     }
@@ -202,13 +201,12 @@ export function useReportes() {
     formatearPeriodo: formatearPeriodo(filtros.desde, filtros.hasta),
     buildQueryParams,
 
-    // Botones de período predefinido
+    // ✅ PERÍODOS PREDEFINIDOS MEJORADOS (SIN SEMANA)
     periodosPredefinidos: [
       { key: 'hoy', label: 'Hoy', periodo: 'diario' },
-      { key: 'semana', label: 'Última semana', periodo: 'diario' },
-      { key: 'mes', label: 'Último mes', periodo: 'mensual' },
+      { key: 'mes', label: 'Último mes', periodo: 'diario' },
       { key: 'trimestre', label: 'Último trimestre', periodo: 'mensual' },
-      { key: 'año', label: 'Último año', periodo: 'anual' }
+      { key: 'año', label: 'Últimos 6 meses', periodo: 'mensual' } // ✅ CAMBIADO
     ]
   };
 }
