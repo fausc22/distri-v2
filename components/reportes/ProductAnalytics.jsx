@@ -568,30 +568,7 @@ export function ProductAnalytics() {
           </div>
         </div>
 
-        {/* ✅ Recomendaciones para gestión de productos */}
-        <div className="mt-6 p-4 bg-blue-50 rounded-lg">
-          <h4 className="text-md font-semibold text-blue-900 mb-2">📈 Recomendaciones de Gestión</h4>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-blue-800">
-            <div>
-              <h5 className="font-semibold mb-2">🎯 Productos Prioritarios:</h5>
-              <ul className="space-y-1">
-                <li>• <strong>Impulsar:</strong> Top 5 más rentables</li>
-                <li>• <strong>Promocionar:</strong> Alto volumen, baja ganancia</li>
-                <li>• <strong>Revisar costos:</strong> Productos con estado "Revisar"</li>
-                <li>• <strong>Optimizar stock:</strong> Productos "Excelente" con poca rotación</li>
-              </ul>
-            </div>
-            <div>
-              <h5 className="font-semibold mb-2">📊 Optimizaciones:</h5>
-              <ul className="space-y-1">
-                <li>• <strong>Stock:</strong> Asegurar disponibilidad de top performers</li>
-                <li>• <strong>Precios:</strong> Analizar productos con baja rotación</li>
-                <li>• <strong>Categorías:</strong> Enfocar en productos "Excelente"</li>
-                <li>• <strong>Inventario:</strong> Reducir productos con estado "Revisar"</li>
-              </ul>
-            </div>
-          </div>
-        </div>
+        
       </div>
 
       {/* ✅ INFORMACIÓN DEL ANÁLISIS */}
@@ -611,13 +588,7 @@ export function ProductAnalytics() {
           </div>
         </div>
         
-        <div className="mt-3 p-3 bg-purple-50 rounded-lg">
-          <p className="text-xs text-purple-800">
-            💡 <strong>Análisis mejorado:</strong> Incluye gráficos de distribución por ganancia y rentabilidad. 
-            La tabla muestra el top 20 y es completamente filtrable haciendo clic en las columnas. 
-            Los datos se actualizan automáticamente según los filtros de fecha seleccionados.
-          </p>
-        </div>
+        
       </div>
     </div>
   );
