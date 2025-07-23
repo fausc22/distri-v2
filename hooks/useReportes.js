@@ -26,12 +26,11 @@ export function useReportes() {
   // Función para aplicar filtros por defecto al cargar
   useEffect(() => {
     const hoy = new Date();
-    const hace30Dias = new Date();
-    hace30Dias.setDate(hoy.getDate() - 30);
+    const primerDiaDelMes = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
 
     setFiltros(prev => ({
       ...prev,
-      desde: prev.desde || hace30Dias.toISOString().split('T')[0],
+      desde: prev.desde || primerDiaDelMes.toISOString().split('T')[0],
       hasta: prev.hasta || hoy.toISOString().split('T')[0]
     }));
   }, []);
@@ -47,72 +46,75 @@ export function useReportes() {
   // Función para limpiar filtros
   const limpiarFiltros = () => {
     const hoy = new Date();
-    const hace30Dias = new Date();
-    hace30Dias.setDate(hoy.getDate() - 30);
+    const primerDiaDelMes = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
 
     setFiltros({
-      desde: hace30Dias.toISOString().split('T')[0],
+      desde: primerDiaDelMes.toISOString().split('T')[0],
       hasta: hoy.toISOString().split('T')[0],
       periodo: 'mensual',
       empleado_id: '',
-      ciudad: '',
-      limite: 20
+      ciudad: ''
+      
     });
 
     toast.success('Filtros restablecidos');
   };
 
   // ✅ Función mejorada para establecer período predefinido
-  const setPeriodoPredefinido = (periodo) => {
-    const hoy = new Date();
-    let desde = new Date();
 
-    switch (periodo) {
-      case 'hoy':
-        desde = new Date();
-        setFiltros(prev => ({
-          ...prev,
-          desde: desde.toISOString().split('T')[0],
-          hasta: hoy.toISOString().split('T')[0],
-          periodo: 'diario'
-        }));
-        break;
-        
-      case 'mes':
-        desde.setMonth(hoy.getMonth() - 1);
-        setFiltros(prev => ({
-          ...prev,
-          desde: desde.toISOString().split('T')[0],
-          hasta: hoy.toISOString().split('T')[0],
-          periodo: 'diario'
-        }));
-        break;
-        
-      case 'trimestre':
-        desde.setMonth(hoy.getMonth() - 3);
-        setFiltros(prev => ({
-          ...prev,
-          desde: desde.toISOString().split('T')[0],
-          hasta: hoy.toISOString().split('T')[0],
-          periodo: 'mensual'
-        }));
-        break;
-        
-      case 'año':
-        // ✅ CORREGIDO: Período de 6 meses en lugar de año completo
-        desde.setMonth(hoy.getMonth() - 6);
-        setFiltros(prev => ({
-          ...prev,
-          desde: desde.toISOString().split('T')[0],
-          hasta: hoy.toISOString().split('T')[0],
-          periodo: 'mensual'
-        }));
-        break;
-        
-      default:
-        break;
-    }
-  };
+
+const setPeriodoPredefinido = (periodo) => {
+  const hoy = new Date();
+  let desde = new Date();
+
+  switch (periodo) {
+    case 'hoy':
+      desde = new Date(); // Mismo día
+      setFiltros(prev => ({
+        ...prev,
+        desde: desde.toISOString().split('T')[0],
+        hasta: hoy.toISOString().split('T')[0],
+        periodo: 'diario'
+      }));
+      break;
+      
+    case 'mes':
+      // ✅ CORREGIDO: Del primer día del mes actual hasta hoy
+      const primerDiaDelMes = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
+      setFiltros(prev => ({
+        ...prev,
+        desde: primerDiaDelMes.toISOString().split('T')[0],
+        hasta: hoy.toISOString().split('T')[0],
+        periodo: 'diario'
+      }));
+      break;
+      
+    case 'trimestre':
+      // ✅ CORREGIDO: Últimos 3 meses completos
+      desde.setMonth(hoy.getMonth() - 3);
+      setFiltros(prev => ({
+        ...prev,
+        desde: desde.toISOString().split('T')[0],
+        hasta: hoy.toISOString().split('T')[0],
+        periodo: 'mensual'
+      }));
+      break;
+      
+    case 'año':
+      // ✅ CORREGIDO: Últimos 6 meses
+      desde.setMonth(hoy.getMonth() - 6);
+      setFiltros(prev => ({
+        ...prev,
+        desde: desde.toISOString().split('T')[0],
+        hasta: hoy.toISOString().split('T')[0],
+        periodo: 'mensual'
+      }));
+      break;
+      
+    default:
+      break;
+  }
+};
 
   // Función para formatear fechas para mostrar
   const formatearPeriodo = (desde, hasta) => {

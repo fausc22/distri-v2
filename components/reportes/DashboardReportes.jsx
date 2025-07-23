@@ -1,8 +1,7 @@
-// components/reportes/DashboardReportes.jsx - VERSIÓN MEJORADA
+// components/reportes/DashboardReportes.jsx - VERSIÓN TOTALMENTE RENOVADA
 import { useEffect, useState } from 'react';
 import { useReportesContext } from '../../context/ReportesContext';
 import { MetricsCard, FinancialMetricsCard, MetricsGrid } from '../charts/MetricsCard';
-import { CustomLineChart, CustomBarChart } from '../charts/CustomCharts';
 
 export function DashboardReportes() {
   const {
@@ -13,11 +12,14 @@ export function DashboardReportes() {
     formatPercentage,
     error,
     lastUpdateFormatted,
-    finanzasApi
+    finanzasApi,
+    filtros
   } = useReportesContext();
 
   const [topProductosTabla, setTopProductosTabla] = useState(null);
   const [loadingTopProductos, setLoadingTopProductos] = useState(false);
+  const [evolucionVentas, setEvolucionVentas] = useState(null);
+  const [loadingEvolucion, setLoadingEvolucion] = useState(false);
 
   useEffect(() => {
     if (!dashboardData) {
@@ -30,8 +32,9 @@ export function DashboardReportes() {
     const cargarTopProductos = async () => {
       setLoadingTopProductos(true);
       try {
-        const resultado = await finanzasApi.obtenerTopProductosTabla?.() || 
-                          await finanzasApi.obtenerGananciasPorProducto({ limite: 5 });
+        // ✅ CORREGIDO: Pasar filtros como parámetro
+        const resultado = await finanzasApi.obtenerTopProductosTabla?.(filtros) || 
+                  await finanzasApi.obtenerGananciasPorProducto({ ...filtros, limite: 5 });
         if (resultado.success) {
           setTopProductosTabla(resultado.data);
         }
@@ -42,10 +45,34 @@ export function DashboardReportes() {
       }
     };
 
-    if (dashboardData) {
+    // ✅ CORREGIDO: Solo cargar si hay filtros válidos
+    if (dashboardData && filtros?.desde && filtros?.hasta) {
       cargarTopProductos();
     }
-  }, [dashboardData]);
+  }, [dashboardData, filtros]);
+
+  // ✅ Cargar evolución de ventas cronológica
+  useEffect(() => {
+    const cargarEvolucionVentas = async () => {
+      setLoadingEvolucion(true);
+      try {
+        // ✅ CORREGIDO: Pasar filtros como parámetro
+        const resultado = await finanzasApi.obtenerGananciasDetalladas(filtros);
+        if (resultado.success) {
+          setEvolucionVentas(resultado.data);
+        }
+      } catch (error) {
+        console.error('Error cargando evolución ventas:', error);
+      } finally {
+        setLoadingEvolucion(false);
+      }
+    };
+
+    // ✅ CORREGIDO: Solo cargar si hay filtros válidos
+    if (dashboardData && filtros?.desde && filtros?.hasta) {
+        cargarEvolucionVentas();
+      }
+  }, [dashboardData, filtros]);
 
   if (error && !dashboardData) {
     return (
@@ -68,14 +95,7 @@ export function DashboardReportes() {
   }
 
   const resumen = dashboardData?.resumen?.data;
-  const ganancias = dashboardData?.ganancias?.data;
   const empleados = dashboardData?.empleados?.data;
-  const ciudades = dashboardData?.ciudades?.data;
-
-  // ✅ Verificar si hay suficientes datos para gráficos
-  const tieneEvolucionDatos = ganancias && ganancias.length > 1;
-  const tieneEmpleadosDatos = empleados && empleados.length > 0;
-  const tieneCiudadesDatos = ciudades && ciudades.length > 0;
 
   return (
     <div className="space-y-6">
@@ -105,7 +125,7 @@ export function DashboardReportes() {
         </button>
       </div>
 
-      {/* ✅ KPIs Principales - CAMBIADO TICKET POR FACTURA */}
+      {/* ✅ KPIs Principales */}
       <MetricsGrid columns={4}>
         <FinancialMetricsCard
           title="Ingresos Totales"
@@ -147,7 +167,7 @@ export function DashboardReportes() {
 
         <FinancialMetricsCard
           title="Factura Promedio"
-          value={resumen?.ventas?.factura_promedio || resumen?.ventas?.ticket_promedio || 0}
+          value={resumen?.ventas?.factura_promedio || 0}
           formatCurrency={formatCurrency}
           color="yellow"
           loading={isAnyLoading}
@@ -159,71 +179,82 @@ export function DashboardReportes() {
         />
       </MetricsGrid>
 
-      {/* ✅ EVOLUCIÓN TEMPORAL - Solo mostrar si hay datos suficientes */}
-      {tieneEvolucionDatos ? (
-        <CustomLineChart
-          data={ganancias}
-          xKey="periodo"
-          yKeys={[
-            { dataKey: 'ingresos_totales', name: 'Ingresos', color: '#10B981' },
-            { dataKey: 'ganancia_estimada', name: 'Ganancia', color: '#3B82F6' }
-          ]}
-          title="Evolución de Ingresos y Ganancias"
-          height={350}
-          formatCurrency={formatCurrency}
-          loading={isAnyLoading}
-        />
-      ) : (
-        <div className="bg-white rounded-lg p-6 border border-gray-200">
-          <h3 className="text-lg font-medium text-gray-900 mb-4">Evolución de Ingresos y Ganancias</h3>
-          <div className="text-center py-12">
+      {/* ✅ RESUMEN DEL PERÍODO - REEMPLAZA EVOLUCIÓN */}
+      <div className="bg-white rounded-lg p-6 border border-gray-200">
+        <h3 className="text-lg font-medium text-gray-900 mb-4">Resumen del Período</h3>
+        
+        {loadingEvolucion ? (
+          <div className="animate-pulse space-y-4">
+            {[...Array(3)].map((_, i) => (
+              <div key={i} className="h-16 bg-gray-200 rounded"></div>
+            ))}
+          </div>
+        ) : evolucionVentas && evolucionVentas.length > 0 ? (
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Período</th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Ventas</th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Ingresos</th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Ganancia</th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Factura Prom.</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {evolucionVentas.slice(0, 10).map((periodo, index) => (
+                  <tr key={index} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                      {periodo.periodo}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm text-gray-900">
+                      {periodo.total_ventas}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium text-green-600">
+                      {formatCurrency(periodo.ingresos_totales)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium text-blue-600">
+                      {formatCurrency(periodo.ganancia_estimada)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm text-gray-900">
+                      {formatCurrency(periodo.factura_promedio)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="text-center py-8">
             <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
             </svg>
-            <p className="mt-4 text-sm text-gray-500">
-              Necesitas más datos históricos para ver la evolución temporal.
-              <br />
-              El gráfico se mostrará cuando tengas ventas en múltiples períodos.
-            </p>
+            <p className="mt-2 text-sm text-gray-500">No hay datos del período para mostrar</p>
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
-      {/* ✅ TOP 5 PRODUCTOS - TABLA EN LUGAR DE GRÁFICO */}
+      {/* ✅ TOP 5 PRODUCTOS - TABLA INFORMATIVA */}
       <div className="bg-white rounded-lg p-6 border border-gray-200">
         <h3 className="text-lg font-medium text-gray-900 mb-4">Top 5 Productos por Ganancia</h3>
         
         {loadingTopProductos ? (
-          <div className="animate-pulse">
-            <div className="space-y-3">
-              {[...Array(5)].map((_, i) => (
-                <div key={i} className="h-12 bg-gray-200 rounded"></div>
-              ))}
-            </div>
+          <div className="animate-pulse space-y-3">
+            {[...Array(5)].map((_, i) => (
+              <div key={i} className="h-12 bg-gray-200 rounded"></div>
+            ))}
           </div>
         ) : topProductosTabla && topProductosTabla.length > 0 ? (
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Producto
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Categoría
-                  </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Precio Promedio
-                  </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Cantidad Vendida
-                  </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Ganancia Total
-                  </th>
-                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Tipo Cálculo
-                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Producto</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Categoría</th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Precio Promedio</th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Cantidad</th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Ingresos</th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Ganancia</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
@@ -246,16 +277,10 @@ export function DashboardReportes() {
                       {parseInt(producto.cantidad_vendida || 0)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium text-green-600">
-                      {formatCurrency(producto.ganancia_total)}
+                      {formatCurrency(producto.ingresos_producto)}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-center">
-                      <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
-                        producto.tipo_calculo === 'Con costo' 
-                          ? 'bg-green-100 text-green-800'
-                          : 'bg-yellow-100 text-yellow-800'
-                      }`}>
-                        {producto.tipo_calculo || 'Estimado'}
-                      </span>
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium text-blue-600">
+                      {formatCurrency(producto.ganancia_total)}
                     </td>
                   </tr>
                 ))}
@@ -272,89 +297,102 @@ export function DashboardReportes() {
         )}
       </div>
 
-      {/* ✅ PERFORMANCE DE EMPLEADOS - TABLA MEJORADA */}
+      {/* ✅ PERFORMANCE DE EMPLEADOS - TABLA DETALLADA */}
       <div className="bg-white rounded-lg p-6 border border-gray-200">
-        <h3 className="text-lg font-medium text-gray-900 mb-4">Performance de Empleados</h3>
+        <h3 className="text-lg font-medium text-gray-900 mb-4">Performance de Empleados - Datos para Comisiones</h3>
         
-        {tieneEmpleadosDatos ? (
+        {empleados && empleados.length > 0 ? (
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Empleado
-                  </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Ventas
-                  </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Ingresos
-                  </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Ganancia
-                  </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Factura Promedio
-                  </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Clientes Atendidos
-                  </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Margen %
-                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Empleado</th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Ventas Realizadas</th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Total Vendido</th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Ganancia Generada</th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Factura Promedio</th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Clientes Atendidos</th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Eficiencia %</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {empleados.map((empleado, index) => (
-                  <tr key={index} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div>
-                        <div className="text-sm font-medium text-gray-900">
-                          {empleado.empleado_nombre}
-                        </div>
-                        {empleados.length === 1 && (
-                          <div className="text-xs text-blue-600">
-                            ⭐ Único vendedor activo
+                {empleados.map((empleado, index) => {
+                  const eficiencia = empleado.clientes_atendidos > 0 ? 
+                    (empleado.total_ventas / empleado.clientes_atendidos * 100) : 0;
+                  
+                  return (
+                    <tr key={index} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div>
+                          <div className="text-sm font-medium text-gray-900">
+                            {empleado.empleado_nombre}
                           </div>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm text-gray-900">
-                      {empleado.total_ventas}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium text-green-600">
-                      {formatCurrency(empleado.ingresos_generados)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium text-blue-600">
-                      {formatCurrency(empleado.ganancia_generada)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm text-gray-900">
-                      {formatCurrency(empleado.factura_promedio)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm text-gray-900">
-                      {empleado.clientes_atendidos || 'N/A'}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm">
-                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                        parseFloat(empleado.margen_promedio) >= 20 
-                          ? 'bg-green-100 text-green-800'
-                          : 'bg-yellow-100 text-yellow-800'
-                      }`}>
-                        {formatPercentage(empleado.margen_promedio)}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
+                          <div className="text-xs text-blue-600">
+                            ID: {empleado.empleado_id}
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm text-gray-900">
+                        <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
+                          {empleado.total_ventas} ventas
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium text-green-600">
+                        {formatCurrency(empleado.ingresos_generados)}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium text-blue-600">
+                        {formatCurrency(empleado.ganancia_generada)}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm text-gray-900">
+                        {formatCurrency(empleado.factura_promedio)}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm text-gray-900">
+                        {empleado.clientes_atendidos || 'N/A'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm">
+                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                          eficiencia >= 150 
+                            ? 'bg-green-100 text-green-800'
+                            : eficiencia >= 100
+                            ? 'bg-yellow-100 text-yellow-800'
+                            : 'bg-red-100 text-red-800'
+                        }`}>
+                          {eficiencia.toFixed(1)}%
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
             
-            {empleados.length === 1 && (
-              <div className="mt-4 p-4 bg-blue-50 rounded-lg">
-                <p className="text-sm text-blue-800">
-                  💡 <strong>Solo hay un vendedor activo.</strong> Cuando tengas más vendedores podrás comparar su performance aquí.
-                </p>
+            {/* ✅ INFORMACIÓN PARA BONOS Y COMISIONES */}
+            <div className="mt-4 p-4 bg-gradient-to-r from-green-50 to-blue-50 rounded-lg">
+              <h4 className="text-md font-semibold text-gray-900 mb-2">📊 Información para Bonos y Comisiones</h4>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                <div className="bg-white p-3 rounded-lg shadow-sm">
+                  <div className="text-gray-600">Total Ganancia Generada</div>
+                  <div className="text-lg font-bold text-green-600">
+                    {formatCurrency(empleados.reduce((sum, emp) => sum + parseFloat(emp.ganancia_generada || 0), 0))}
+                  </div>
+                </div>
+                <div className="bg-white p-3 rounded-lg shadow-sm">
+                  <div className="text-gray-600">Promedio por Venta</div>
+                  <div className="text-lg font-bold text-blue-600">
+                    {formatCurrency(empleados.reduce((sum, emp) => sum + parseFloat(emp.factura_promedio || 0), 0) / empleados.length)}
+                  </div>
+                </div>
+                <div className="bg-white p-3 rounded-lg shadow-sm">
+                  <div className="text-gray-600">Eficiencia Promedio</div>
+                  <div className="text-lg font-bold text-purple-600">
+                    {(empleados.reduce((sum, emp) => {
+                      const eff = emp.clientes_atendidos > 0 ? (emp.total_ventas / emp.clientes_atendidos * 100) : 0;
+                      return sum + eff;
+                    }, 0) / empleados.length).toFixed(1)}%
+                  </div>
+                </div>
               </div>
-            )}
+            </div>
           </div>
         ) : (
           <div className="text-center py-8">
@@ -366,127 +404,80 @@ export function DashboardReportes() {
         )}
       </div>
 
-      {/* ✅ GANANCIAS POR CIUDAD - TABLA CON MÁS INFORMACIÓN */}
+      {/* ✅ MÉTRICAS OPERATIVAS ÚTILES - REEMPLAZA MÉTRICAS ADICIONALES */}
       <div className="bg-white rounded-lg p-6 border border-gray-200">
-        <h3 className="text-lg font-medium text-gray-900 mb-4">Ganancias por Ciudad</h3>
+        <h3 className="text-lg font-medium text-gray-900 mb-4">Métricas Operativas del Negocio</h3>
         
-        {tieneCiudadesDatos ? (
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Ciudad / Provincia
-                  </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Ventas
-                  </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Clientes
-                  </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Ingresos
-                  </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Ganancia
-                  </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Factura Promedio
-                  </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    % del Total
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {ciudades.slice(0, 5).map((ciudad, index) => (
-                  <tr key={index} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div>
-                        <div className="text-sm font-medium text-gray-900">
-                          {ciudad.ciudad}
-                        </div>
-                        <div className="text-sm text-gray-500">
-                          {ciudad.provincia}
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm text-gray-900">
-                      {ciudad.total_ventas}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm text-gray-900">
-                      {ciudad.clientes_unicos}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium text-green-600">
-                      {formatCurrency(ciudad.ingresos_totales)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium text-blue-600">
-                      {formatCurrency(ciudad.ganancia_estimada)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm text-gray-900">
-                      {formatCurrency(ciudad.factura_promedio)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm">
-                      <span className="inline-flex px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">
-                        {ciudad.porcentaje_ingresos || '0'}%
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <div className="text-center py-8">
-            <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-            </svg>
-            <p className="mt-2 text-sm text-gray-500">No hay datos de ciudades en el período seleccionado</p>
-          </div>
-        )}
-      </div>
-
-      {/* ✅ MÉTRICAS ÚTILES - REEMPLAZANDO LAS ADICIONALES */}
-      <div className="bg-white rounded-lg p-6 border border-gray-200">
-        <h3 className="text-lg font-medium text-gray-900 mb-4">Métricas de Performance</h3>
-        
-        <MetricsGrid columns={3}>
+        <MetricsGrid columns={4}>
           <MetricsCard
-            title="Margen de Ganancia"
-            value={formatPercentage(resumen?.ganancias?.margen_promedio || 0)}
+            title="Rentabilidad del Negocio"
+            value={formatPercentage(resumen?.balance?.rentabilidad || 0)}
             color="green"
             size="small"
             loading={isAnyLoading}
-            subtitle="Promedio del período"
+            subtitle="Ganancia vs Ingresos"
+            icon={
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-full h-full">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+              </svg>
+            }
           />
           
           <MetricsCard
-            title="Productos con Costo Definido"
-            value={`${dashboardData?.ganancias?.data?.[0]?.productos_con_costo || 0}/${(dashboardData?.ganancias?.data?.[0]?.productos_con_costo || 0) + (dashboardData?.ganancias?.data?.[0]?.productos_sin_costo || 0)}`}
-            color="blue"
+            title="Resultado Operativo"
+            value={formatCurrency(resumen?.balance?.resultado_neto || 0)}
+            color={resumen?.balance?.resultado_neto >= 0 ? "blue" : "red"}
             size="small"
             loading={isAnyLoading}
-            subtitle="vs estimados (25%)"
+            subtitle="Ingresos - Egresos"
+            icon={
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-full h-full">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+              </svg>
+            }
           />
           
           <MetricsCard
-            title="Concentración de Ventas"
-            value={empleados?.length === 1 ? "1 vendedor" : `${empleados?.length || 0} vendedores`}
+            title="Productividad Empleado"
+            value={empleados?.length > 0 ? 
+              `${(resumen?.ventas?.total_ventas / empleados.length).toFixed(1)} ventas/emp` : 
+              "N/A"}
             color="purple"
             size="small"
             loading={isAnyLoading}
-            subtitle="Equipo activo"
+            subtitle="Ventas por empleado"
+            icon={
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-full h-full">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+              </svg>
+            }
+          />
+          
+          <MetricsCard
+            title="Cobertura de Costos"
+            value={formatPercentage(
+              resumen?.balance?.ingresos_totales > 0 ? 
+                (resumen?.balance?.egresos_totales / resumen?.balance?.ingresos_totales * 100) : 0
+            )}
+            color="yellow"
+            size="small"
+            loading={isAnyLoading}
+            subtitle="Egresos vs Ingresos"
+            icon={
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-full h-full">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            }
           />
         </MetricsGrid>
       </div>
 
-      {/* ✅ INFORMACIÓN DEL SISTEMA MEJORADA */}
+      {/* ✅ INFORMACIÓN DEL SISTEMA */}
       {dashboardData && (
-        <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+        <div className="bg-gradient-to-r from-gray-50 to-blue-50 rounded-lg p-4 border border-gray-200">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-gray-600">
             <div>
-              <strong>Período analizado:</strong> {ganancias?.length || 0} registros temporales
+              <strong>Período analizado:</strong> {evolucionVentas?.length || 0} períodos con datos
             </div>
             <div>
               <strong>Productos activos:</strong> {topProductosTabla?.length || 0} productos con ventas
@@ -498,8 +489,9 @@ export function DashboardReportes() {
           
           <div className="mt-3 p-3 bg-blue-50 rounded-lg">
             <p className="text-xs text-blue-800">
-              💡 <strong>Nota:</strong> Los productos sin costo definido usan un margen estimado del 25%. 
-              Define costos reales para cálculos más precisos.
+              💡 <strong>Dashboard optimizado:</strong> Se muestran tablas informativas en lugar de gráficos 
+              hasta tener más datos históricos. Los datos geográficos están temporalmente ocultos 
+              hasta normalizar las ciudades en la base de datos.
             </p>
           </div>
         </div>

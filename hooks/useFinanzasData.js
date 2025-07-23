@@ -78,9 +78,9 @@ export function useFinanzasData() {
       params.append('hasta', filtros.hasta);
       params.append('periodo', filtros.periodo || 'mensual');
       
-      if (filtros.limite) {
-        params.append('limite', filtros.limite);
-      }
+      // if (filtros.limite) {
+      //   params.append('limite', filtros.limite);
+      // }
 
       console.log('📊 Solicitando ganancias detalladas:', params.toString());
 
@@ -170,7 +170,7 @@ export function useFinanzasData() {
       
       if (filtros.desde) params.append('desde', filtros.desde);
       if (filtros.hasta) params.append('hasta', filtros.hasta);
-      if (filtros.limite) params.append('limite', filtros.limite);
+      // if (filtros.limite) params.append('limite', filtros.limite);
 
       const response = await axiosAuth.get(`/finanzas/ganancias-por-producto?${params.toString()}`);
       
@@ -223,7 +223,7 @@ export function useFinanzasData() {
       
       if (filtros.desde) params.append('desde', filtros.desde);
       if (filtros.hasta) params.append('hasta', filtros.hasta);
-      if (filtros.limite) params.append('limite', filtros.limite);
+      // if (filtros.limite) params.append('limite', filtros.limite);
 
       const response = await axiosAuth.get(`/finanzas/ganancias-por-ciudad?${params.toString()}`);
       
@@ -250,7 +250,7 @@ export function useFinanzasData() {
       
       if (filtros.desde) params.append('desde', filtros.desde);
       if (filtros.hasta) params.append('hasta', filtros.hasta);
-      if (filtros.limite) params.append('limite', filtros.limite);
+      // if (filtros.limite) params.append('limite', filtros.limite);
 
       const response = await axiosAuth.get(`/finanzas/productos-mas-rentables?${params.toString()}`);
       
@@ -308,7 +308,7 @@ export function useFinanzasData() {
       
       if (filtros.desde) params.append('desde', filtros.desde);
       if (filtros.hasta) params.append('hasta', filtros.hasta);
-      if (filtros.limite) params.append('limite', filtros.limite);
+      // if (filtros.limite) params.append('limite', filtros.limite);
 
       const response = await axiosAuth.get(`/finanzas/ventas-productos?${params.toString()}`);
       
@@ -448,7 +448,7 @@ export function useFinanzasData() {
       
       if (filtros.desde) params.append('desde', filtros.desde);
       if (filtros.hasta) params.append('hasta', filtros.hasta);
-      if (filtros.limite) params.append('limite', filtros.limite);
+      // if (filtros.limite) params.append('limite', filtros.limite);
 
       const response = await axiosAuth.get(`/finanzas/gastos-categoria?${params.toString()}`);
       
@@ -589,7 +589,7 @@ export function useFinanzasData() {
     
     if (filtros.desde) params.append('desde', filtros.desde);
     if (filtros.hasta) params.append('hasta', filtros.hasta);
-    if (filtros.limite) params.append('limite', filtros.limite);
+    // if (filtros.limite) params.append('limite', filtros.limite);
 
     const response = await axiosAuth.get(`/finanzas/top-productos-tabla?${params.toString()}`);
     

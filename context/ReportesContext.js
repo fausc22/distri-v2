@@ -244,12 +244,13 @@ export function ReportesProvider({ children }) {
       const resultados = await Promise.allSettled([
         finanzasApi.obtenerResumenFinanciero(filtros),
         finanzasApi.obtenerGananciasDetalladas(filtros),
-        finanzasApi.obtenerGananciasPorProducto({ ...filtros, limite: 5 }),
+        finanzasApi.obtenerGananciasPorProducto(filtros), // 
         finanzasApi.obtenerGananciasPorEmpleado(filtros),
-        finanzasApi.obtenerGananciasPorCiudad({ ...filtros, limite: 5 }),
+        finanzasApi.obtenerGananciasPorCiudad(filtros), // 
         finanzasApi.obtenerVentasPorVendedor(filtros),
         finanzasApi.obtenerBalanceGeneral(filtros),
-        finanzasApi.obtenerProductosMasVendidos({ ...filtros, limite: 5 })
+        finanzasApi.obtenerProductosMasVendidos(filtros), // 
+        finanzasApi.obtenerTopProductosTabla(filtros) // 
       ]);
 
       // ✅ Procesar resultados de manera más robusta

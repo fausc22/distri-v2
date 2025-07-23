@@ -1,15 +1,13 @@
-// components/reportes/ProductAnalytics.jsx
+// components/reportes/ProductAnalytics.jsx - VERSIÓN MEJORADA CON GRÁFICO Y TABLA FILTRABLE
 import { useEffect, useState } from 'react';
 import { useReportesContext } from '../../context/ReportesContext';
 import { MetricsCard, FinancialMetricsCard, MetricsGrid } from '../charts/MetricsCard';
-import { CustomPieChart, HorizontalBarChart, CustomBarChart } from '../charts/CustomCharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
 export function ProductAnalytics() {
   const {
     cargarDatos,
     isLoading,
-    getData,
-    getTotales,
     formatCurrency,
     formatPercentage,
     filtros
@@ -21,6 +19,10 @@ export function ProductAnalytics() {
     gananciasPorProducto: null
   });
 
+  // Estados para tabla filtrable
+  const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
+  const [displayData, setDisplayData] = useState([]);
+
   // Cargar datos cuando cambie el componente o filtros
   useEffect(() => {
     cargarDatosProductos();
@@ -29,9 +31,9 @@ export function ProductAnalytics() {
   const cargarDatosProductos = async () => {
     try {
       const [rentables, vendidos, ganancias] = await Promise.all([
-        cargarDatos('productosMasRentables', { limite: 20 }),
-        cargarDatos('productosMasVendidos', { limite: 20 }),
-        cargarDatos('gananciasPorProducto', { limite: 30 })
+        cargarDatos('productosMasRentables'),
+        cargarDatos('productosMasVendidos'),
+        cargarDatos('gananciasPorProducto')
       ]);
 
       setDatosProductos({
@@ -54,6 +56,66 @@ export function ProductAnalytics() {
                       isLoading('productosMasVendidos') || 
                       isLoading('gananciasPorProducto');
 
+  // ✅ FUNCIONALIDAD DE ORDENAMIENTO
+  const handleSort = (key) => {
+    let direction = 'asc';
+    if (sortConfig.key === key && sortConfig.direction === 'asc') {
+      direction = 'desc';
+    }
+    setSortConfig({ key, direction });
+  };
+
+  const getSortIcon = (columnKey) => {
+    if (sortConfig.key !== columnKey) {
+      return (
+        <svg className="w-4 h-4 ml-1 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
+        </svg>
+      );
+    }
+    
+    return sortConfig.direction === 'asc' ? (
+      <svg className="w-4 h-4 ml-1 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+      </svg>
+    ) : (
+      <svg className="w-4 h-4 ml-1 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+      </svg>
+    );
+  };
+
+  // ✅ ORDENAR DATOS
+  useEffect(() => {
+    if (gananciasPorProducto && gananciasPorProducto.length > 0) {
+      let sortedData = [...gananciasPorProducto];
+      
+      if (sortConfig.key) {
+        sortedData.sort((a, b) => {
+          let aValue = a[sortConfig.key];
+          let bValue = b[sortConfig.key];
+          
+          // Convertir a números si es necesario
+          if (typeof aValue === 'string' && !isNaN(parseFloat(aValue))) {
+            aValue = parseFloat(aValue);
+            bValue = parseFloat(bValue);
+          }
+          
+          if (aValue < bValue) {
+            return sortConfig.direction === 'asc' ? -1 : 1;
+          }
+          if (aValue > bValue) {
+            return sortConfig.direction === 'asc' ? 1 : -1;
+          }
+          return 0;
+        });
+      }
+      
+      // ✅ TOP 20 PRODUCTOS
+      setDisplayData(sortedData.slice(0, 20));
+    }
+  }, [gananciasPorProducto, sortConfig]);
+
   // Calcular métricas generales
   const totalProductosVendidos = gananciasPorProducto?.length || 0;
   const totalCantidadVendida = gananciasPorProducto?.reduce((acc, item) => 
@@ -61,31 +123,60 @@ export function ProductAnalytics() {
   const totalIngresosPorProductos = gananciasPorProducto?.reduce((acc, item) => 
     acc + (parseFloat(item.ingresos_producto) || 0), 0) || 0;
   const totalGananciaPorProductos = gananciasPorProducto?.reduce((acc, item) => 
-    acc + (parseFloat(item.ganancia_estimada) || 0), 0) || 0;
+  acc + (parseFloat(item.ganancia_estimada) || 0), 0) || 0;
 
-  // Calcular margen promedio
-  const margenPromedio = totalIngresosPorProductos > 0 ? 
-    (totalGananciaPorProductos / totalIngresosPorProductos) * 100 : 0;
+  // Calcular precio promedio general
+  const precioPromedioGeneral = totalCantidadVendida > 0 ? 
+    totalIngresosPorProductos / totalCantidadVendida : 0;
 
-  // Preparar datos para gráfico de distribución por margen
-  const productosPorMargen = gananciasPorProducto?.reduce((acc, producto) => {
-    const margen = parseFloat(producto.margen_porcentaje || 0);
-    let categoria;
+  // ✅ DATOS PARA GRÁFICO DE DISTRIBUCIÓN DE GANANCIAS
+  const prepararDatosGrafico = () => {
+    if (!gananciasPorProducto || gananciasPorProducto.length === 0) return [];
     
-    if (margen >= 40) categoria = 'Alto (40%+)';
-    else if (margen >= 25) categoria = 'Medio (25-40%)';
-    else if (margen >= 15) categoria = 'Bajo (15-25%)';
-    else categoria = 'Muy Bajo (<15%)';
-    
-    acc[categoria] = (acc[categoria] || 0) + 1;
-    return acc;
-  }, {}) || {};
+    // Top 10 para el gráfico de barras
+    return gananciasPorProducto
+      .slice(0, 10)
+      .map(producto => ({
+        nombre: producto.producto_nombre.length > 15 ? 
+          producto.producto_nombre.substring(0, 15) + '...' : 
+          producto.producto_nombre,
+        ganancia: parseFloat(producto.ganancia_estimada || 0),
+        ingresos: parseFloat(producto.ingresos_producto || 0),
+        cantidad: parseInt(producto.cantidad_total_vendida || 0)
+      }));
+  };
 
-  const datosDistribucionMargen = Object.entries(productosPorMargen).map(([categoria, cantidad]) => ({
-    categoria,
-    cantidad,
-    porcentaje: totalProductosVendidos > 0 ? (cantidad / totalProductosVendidos) * 100 : 0
-  }));
+  // ✅ DATOS PARA GRÁFICO DE CATEGORÍAS DE RENTABILIDAD
+  const prepararDatosPie = () => {
+    if (!gananciasPorProducto || gananciasPorProducto.length === 0) return [];
+    
+    const categorias = {
+      excelente: 0,
+      bueno: 0,
+      regular: 0,
+      revisar: 0
+    };
+    
+    gananciasPorProducto.forEach(producto => {
+      const gananciaUnitaria = producto.cantidad_total_vendida > 0 ? 
+        producto.ganancia_estimada / producto.cantidad_total_vendida : 0;
+      
+      if (gananciaUnitaria > 50000) categorias.excelente++;
+      else if (gananciaUnitaria > 20000) categorias.bueno++;
+      else if (gananciaUnitaria > 0) categorias.regular++;
+      else categorias.revisar++;
+    });
+    
+    return [
+      { name: 'Excelente', value: categorias.excelente, color: '#10B981' },
+      { name: 'Bueno', value: categorias.bueno, color: '#F59E0B' },
+      { name: 'Regular', value: categorias.regular, color: '#3B82F6' },
+      { name: 'Revisar', value: categorias.revisar, color: '#EF4444' }
+    ].filter(item => item.value > 0);
+  };
+
+  const datosGrafico = prepararDatosGrafico();
+  const datosPie = prepararDatosPie();
 
   return (
     <div className="space-y-6">
@@ -115,7 +206,7 @@ export function ProductAnalytics() {
         </button>
       </div>
 
-      {/* KPIs de Productos */}
+      {/* ✅ KPIs de Productos SIMPLIFICADOS */}
       <MetricsGrid columns={4}>
         <MetricsCard
           title="Productos Analizados"
@@ -154,234 +245,378 @@ export function ProductAnalytics() {
           }
         />
 
-        <MetricsCard
-          title="Margen Promedio"
-          value={formatPercentage(margenPromedio)}
+        <FinancialMetricsCard
+          title="Precio Promedio"
+          value={precioPromedioGeneral}
+          formatCurrency={formatCurrency}
           color="yellow"
           loading={isLoadingAny}
           icon={
             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-full h-full">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
             </svg>
           }
         />
       </MetricsGrid>
 
-      {/* Gráficos Principales */}
+      {/* ✅ GRÁFICOS RELEVANTES */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Top Productos Más Rentables */}
-        <HorizontalBarChart
-          data={productosMasRentables?.slice(0, 10)}
-          xKey="producto_nombre"
-          yKey="ganancia_total"
-          title="Top 10 Productos Más Rentables"
-          height={350}
-          formatCurrency={formatCurrency}
-          loading={isLoadingAny}
-          maxItems={10}
-        />
+        {/* Gráfico de Barras - Top 10 por Ganancia */}
+        <div className="bg-white rounded-lg p-6 border border-gray-200">
+          <h3 className="text-lg font-medium text-gray-900 mb-4">
+            Top 10 Productos por Ganancia
+          </h3>
+          
+          {isLoadingAny ? (
+            <div className="animate-pulse">
+              <div className="h-64 bg-gray-200 rounded"></div>
+            </div>
+          ) : datosGrafico.length > 0 ? (
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={datosGrafico} margin={{ top: 20, right: 30, left: 20, bottom: 60 }}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis 
+                  dataKey="nombre" 
+                  angle={-45}
+                  textAnchor="end"
+                  height={80}
+                  fontSize={12}
+                />
+                <YAxis 
+                  tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
+                  fontSize={12}
+                />
+                <Tooltip 
+                  formatter={(value, name) => [
+                    formatCurrency(value), 
+                    name === 'ganancia' ? 'Ganancia' : 'Ingresos'
+                  ]}
+                  labelStyle={{ color: '#374151' }}
+                />
+                <Bar dataKey="ganancia" fill="#8B5CF6" name="ganancia" />
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="flex items-center justify-center h-64 text-gray-500">
+              No hay datos suficientes para el gráfico
+            </div>
+          )}
+        </div>
 
-        {/* Distribución por Margen */}
-        <CustomPieChart
-          data={datosDistribucionMargen}
-          nameKey="categoria"
-          valueKey="cantidad"
-          title="Distribución por Margen de Ganancia"
-          height={350}
-          loading={isLoadingAny}
-          showPercentage={true}
-        />
+        {/* Gráfico de Pie - Distribución por Rentabilidad */}
+        <div className="bg-white rounded-lg p-6 border border-gray-200">
+          <h3 className="text-lg font-medium text-gray-900 mb-4">
+            Distribución por Nivel de Rentabilidad
+          </h3>
+          
+          {isLoadingAny ? (
+            <div className="animate-pulse">
+              <div className="h-64 bg-gray-200 rounded"></div>
+            </div>
+          ) : datosPie.length > 0 ? (
+            <ResponsiveContainer width="100%" height={300}>
+              <PieChart>
+                <Pie
+                  data={datosPie}
+                  cx="50%"
+                  cy="50%"
+                  outerRadius={80}
+                  dataKey="value"
+                  label={({ name, value }) => `${name}: ${value}`}
+                >
+                  {datosPie.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.color} />
+                  ))}
+                </Pie>
+                <Tooltip />
+              </PieChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="flex items-center justify-center h-64 text-gray-500">
+              No hay datos suficientes para el gráfico
+            </div>
+          )}
+          
+          {/* Leyenda personalizada */}
+          <div className="mt-4 grid grid-cols-2 gap-2 text-sm">
+            {datosPie.map((item, index) => (
+              <div key={index} className="flex items-center">
+                <div 
+                  className="w-3 h-3 rounded-full mr-2" 
+                  style={{ backgroundColor: item.color }}
+                ></div>
+                <span>{item.name}: {item.value} productos</span>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
 
-      {/* Comparativa Rentabilidad vs Volumen */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <HorizontalBarChart
-          data={productosMasVendidos?.slice(0, 10)}
-          xKey="producto_nombre"
-          yKey="total_vendida"
-          title="Top 10 Productos Más Vendidos (Cantidad)"
-          height={300}
-          loading={isLoadingAny}
-          maxItems={10}
-        />
-
-        <CustomBarChart
-          data={productosMasRentables?.slice(0, 8)}
-          xKey="producto_nombre"
-          yKeys={[
-            { dataKey: 'margen_porcentaje', name: 'Margen %', color: '#8B5CF6' },
-            { dataKey: 'cantidad_vendida', name: 'Cantidad Vendida', color: '#06B6D4' }
-          ]}
-          title="Rentabilidad vs Volumen"
-          height={300}
-          formatPercentage={formatPercentage}
-          loading={isLoadingAny}
-        />
-      </div>
-
-      {/* Tabla Detallada de Productos */}
+      {/* ✅ ANÁLISIS DETALLADO - TOP 20 CON COLUMNAS FILTRABLES */}
       <div className="bg-white rounded-lg p-6 border border-gray-200">
-        <h3 className="text-lg font-medium text-gray-900 mb-4">
-          Análisis Detallado de Productos
-        </h3>
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-medium text-gray-900">
+            Top 20 Productos - Análisis Detallado
+          </h3>
+          <div className="text-sm text-gray-500">
+            Haz clic en las columnas para ordenar ↕️
+          </div>
+        </div>
         
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Producto
-                </th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Cant. Vendida
-                </th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Precio Promedio
-                </th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Ingresos
-                </th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Ganancia
-                </th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Margen %
-                </th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Performance
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {gananciasPorProducto?.slice(0, 15).map((producto, index) => {
-                const margen = parseFloat(producto.margen_porcentaje || 0);
-                const performanceColor = margen >= 30 ? 'text-green-600' : 
-                                       margen >= 20 ? 'text-yellow-600' : 'text-red-600';
-                const performanceIcon = margen >= 30 ? '🟢' : 
-                                      margen >= 20 ? '🟡' : '🔴';
-                
-                return (
-                  <tr key={producto.producto_id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div>
-                        <div className="text-sm font-medium text-gray-900">
-                          {producto.producto_nombre}
-                        </div>
-                        <div className="text-sm text-gray-500">
-                          ID: {producto.producto_id}
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm text-gray-900">
-                      {parseInt(producto.cantidad_total_vendida || 0).toLocaleString()}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm text-gray-900">
-                      {formatCurrency(producto.precio_promedio)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium text-green-600">
-                      {formatCurrency(producto.ingresos_producto)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium text-blue-600">
-                      {formatCurrency(producto.ganancia_estimada)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm">
-                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                        margen >= 30 
-                          ? 'bg-green-100 text-green-800'
-                          : margen >= 20
-                          ? 'bg-yellow-100 text-yellow-800'
-                          : 'bg-red-100 text-red-800'
-                      }`}>
-                        {formatPercentage(margen)}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm">
-                      <span className={`font-medium ${performanceColor}`}>
-                        {performanceIcon} {margen >= 30 ? 'Excelente' : 
-                                         margen >= 20 ? 'Buena' : 'Mejorable'}
-                      </span>
-                    </td>
-                  </tr>
-                );
-              }) || (
+        {isLoadingAny ? (
+          <div className="animate-pulse space-y-4">
+            {[...Array(20)].map((_, i) => (
+              <div key={i} className="h-12 bg-gray-200 rounded"></div>
+            ))}
+          </div>
+        ) : displayData && displayData.length > 0 ? (
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
                 <tr>
-                  <td colSpan="7" className="px-6 py-4 text-center text-gray-500">
-                    {isLoadingAny ? 'Cargando productos...' : 'No hay datos de productos'}
-                  </td>
+                  <th 
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                    onClick={() => handleSort('producto_nombre')}
+                  >
+                    <div className="flex items-center">
+                      Producto
+                      {getSortIcon('producto_nombre')}
+                    </div>
+                  </th>
+                  <th 
+                    className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                    onClick={() => handleSort('precio_promedio')}
+                  >
+                    <div className="flex items-center justify-end">
+                      Precio
+                      {getSortIcon('precio_promedio')}
+                    </div>
+                  </th>
+                  <th 
+                    className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                    onClick={() => handleSort('cantidad_total_vendida')}
+                  >
+                    <div className="flex items-center justify-end">
+                      Cantidad
+                      {getSortIcon('cantidad_total_vendida')}
+                    </div>
+                  </th>
+                  <th 
+                    className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                    onClick={() => handleSort('veces_vendido')}
+                  >
+                    <div className="flex items-center justify-end">
+                      Veces Vendido
+                      {getSortIcon('veces_vendido')}
+                    </div>
+                  </th>
+                  <th 
+                    className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                    onClick={() => handleSort('ingresos_producto')}
+                  >
+                    <div className="flex items-center justify-end">
+                      Ingresos
+                      {getSortIcon('ingresos_producto')}
+                    </div>
+                  </th>
+                  <th 
+                    className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                    onClick={() => handleSort('ganancia_estimada')}
+                  >
+                    <div className="flex items-center justify-end">
+                      Ganancia
+                      {getSortIcon('ganancia_estimada')}
+                    </div>
+                  </th>
+                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Estado
+                  </th>
                 </tr>
-              )}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {displayData.map((producto, index) => {
+                  const gananciaUnitaria = producto.cantidad_total_vendida > 0 ? 
+                    producto.ganancia_estimada / producto.cantidad_total_vendida : 0;
+                  
+                  return (
+                    <tr key={producto.producto_id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div>
+                          <div className="text-sm font-medium text-gray-900">
+                            {producto.producto_nombre}
+                          </div>
+                          <div className="text-sm text-gray-500">
+                            ID: {producto.producto_id}
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium text-blue-600">
+                        {formatCurrency(producto.precio_promedio)}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm text-gray-900">
+                        <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-800">
+                          {producto.cantidad_total_vendida}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm text-gray-900">
+                        {producto.veces_vendido}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium text-green-600">
+                        {formatCurrency(producto.ingresos_producto)}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium text-purple-600">
+                        {formatCurrency(producto.ganancia_estimada)}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-center text-sm">
+                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                          gananciaUnitaria > 50000 
+                            ? 'bg-green-100 text-green-800'
+                            : gananciaUnitaria > 20000
+                            ? 'bg-yellow-100 text-yellow-800'
+                            : gananciaUnitaria > 0
+                            ? 'bg-blue-100 text-blue-800'
+                            : 'bg-red-100 text-red-800'
+                        }`}>
+                          {gananciaUnitaria > 50000 ? 'Excelente' : 
+                           gananciaUnitaria > 20000 ? 'Bueno' : 
+                           gananciaUnitaria > 0 ? 'Regular' : 'Revisar'}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="text-center py-8">
+            <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+            </svg>
+            <p className="mt-2 text-sm text-gray-500">No hay datos detallados de productos</p>
+          </div>
+        )}
+      </div>
+
+      {/* ✅ RESUMEN OPERATIVO DE PRODUCTOS */}
+      <div className="bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg p-6 border border-gray-200">
+        <h3 className="text-lg font-medium text-gray-900 mb-4">Resumen Operativo de Productos</h3>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="bg-white rounded-lg p-4 shadow-sm">
+            <div className="flex items-center">
+              <div className="flex-shrink-0">
+                <svg className="h-8 w-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                </svg>
+              </div>
+              <div className="ml-4">
+                <div className="text-sm font-medium text-gray-500">Producto Top</div>
+                <div className="text-lg font-bold text-gray-900">
+                  {gananciasPorProducto?.[0]?.producto_nombre?.substring(0, 15) || 'N/A'}...
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-lg p-4 shadow-sm">
+            <div className="flex items-center">
+              <div className="flex-shrink-0">
+                <svg className="h-8 w-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                </svg>
+              </div>
+              <div className="ml-4">
+                <div className="text-sm font-medium text-gray-500">Más Vendido</div>
+                <div className="text-lg font-bold text-gray-900">
+                  {productosMasVendidos?.[0]?.producto_nombre?.substring(0, 15) || 'N/A'}...
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-lg p-4 shadow-sm">
+            <div className="flex items-center">
+              <div className="flex-shrink-0">
+                <svg className="h-8 w-8 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+                </svg>
+              </div>
+              <div className="ml-4">
+                <div className="text-sm font-medium text-gray-500">Ganancia Total</div>
+                <div className="text-lg font-bold text-gray-900">
+                  {formatCurrency(totalGananciaPorProductos)}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-lg p-4 shadow-sm">
+            <div className="flex items-center">
+              <div className="flex-shrink-0">
+                <svg className="h-8 w-8 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                </svg>
+              </div>
+              <div className="ml-4">
+                <div className="text-sm font-medium text-gray-500">Ganancia Unitaria Prom.</div>
+                <div className="text-lg font-bold text-gray-900">
+                  {formatCurrency(totalCantidadVendida > 0 ? totalGananciaPorProductos / totalCantidadVendida : 0)}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* ✅ Recomendaciones para gestión de productos */}
+        <div className="mt-6 p-4 bg-blue-50 rounded-lg">
+          <h4 className="text-md font-semibold text-blue-900 mb-2">📈 Recomendaciones de Gestión</h4>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-blue-800">
+            <div>
+              <h5 className="font-semibold mb-2">🎯 Productos Prioritarios:</h5>
+              <ul className="space-y-1">
+                <li>• <strong>Impulsar:</strong> Top 5 más rentables</li>
+                <li>• <strong>Promocionar:</strong> Alto volumen, baja ganancia</li>
+                <li>• <strong>Revisar costos:</strong> Productos con estado "Revisar"</li>
+                <li>• <strong>Optimizar stock:</strong> Productos "Excelente" con poca rotación</li>
+              </ul>
+            </div>
+            <div>
+              <h5 className="font-semibold mb-2">📊 Optimizaciones:</h5>
+              <ul className="space-y-1">
+                <li>• <strong>Stock:</strong> Asegurar disponibilidad de top performers</li>
+                <li>• <strong>Precios:</strong> Analizar productos con baja rotación</li>
+                <li>• <strong>Categorías:</strong> Enfocar en productos "Excelente"</li>
+                <li>• <strong>Inventario:</strong> Reducir productos con estado "Revisar"</li>
+              </ul>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Insights y Recomendaciones */}
-      <div className="bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg p-6 border border-gray-200">
-        <h3 className="text-lg font-medium text-gray-900 mb-4">Insights de Productos</h3>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          <div className="bg-white rounded-lg p-4 shadow-sm">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <span className="text-2xl">🏆</span>
-              </div>
-              <div className="ml-4">
-                <div className="text-sm font-medium text-gray-500">Producto Estrella</div>
-                <div className="text-lg font-bold text-gray-900">
-                  {productosMasRentables?.[0]?.producto_nombre?.slice(0, 20) || 'N/A'}
-                  {productosMasRentables?.[0]?.producto_nombre?.length > 20 && '...'}
-                </div>
-                <div className="text-sm text-green-600">
-                  {formatCurrency(productosMasRentables?.[0]?.ganancia_total || 0)} ganancia
-                </div>
-              </div>
-            </div>
+      {/* ✅ INFORMACIÓN DEL ANÁLISIS */}
+      <div className="bg-gradient-to-r from-gray-50 to-purple-50 rounded-lg p-4 border border-gray-200">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm text-gray-600">
+          <div>
+            <strong>Productos analizados:</strong> {totalProductosVendidos} con ventas
           </div>
-
-          <div className="bg-white rounded-lg p-4 shadow-sm">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <span className="text-2xl">📈</span>
-              </div>
-              <div className="ml-4">
-                <div className="text-sm font-medium text-gray-500">Productos Alta Rentabilidad</div>
-                <div className="text-2xl font-bold text-gray-900">
-                  {datosDistribucionMargen.find(d => d.categoria === 'Alto (40%+)')?.cantidad || 0}
-                </div>
-                <div className="text-sm text-blue-600">
-                  {formatPercentage(datosDistribucionMargen.find(d => d.categoria === 'Alto (40%+)')?.porcentaje || 0)} del total
-                </div>
-              </div>
-            </div>
+          <div>
+            <strong>Mostrando:</strong> Top 20 productos
           </div>
-
-          <div className="bg-white rounded-lg p-4 shadow-sm">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <span className="text-2xl">⚠️</span>
-              </div>
-              <div className="ml-4">
-                <div className="text-sm font-medium text-gray-500">Productos Bajo Margen</div>
-                <div className="text-2xl font-bold text-gray-900">
-                  {datosDistribucionMargen.find(d => d.categoria === 'Muy Bajo (<15%)')?.cantidad || 0}
-                </div>
-                <div className="text-sm text-red-600">
-                  Requieren atención
-                </div>
-              </div>
-            </div>
+          <div>
+            <strong>Unidades totales:</strong> {totalCantidadVendida.toLocaleString()} vendidas
+          </div>
+          <div>
+            <strong>Ordenado por:</strong> {sortConfig.key ? `${sortConfig.key} (${sortConfig.direction === 'asc' ? 'Asc' : 'Desc'})` : 'Ganancia estimada'}
           </div>
         </div>
-
-        {/* Recomendaciones */}
-        <div className="mt-6 p-4 bg-blue-50 rounded-lg">
-          <h4 className="text-md font-semibold text-blue-900 mb-2">🎯 Recomendaciones</h4>
-          <ul className="text-sm text-blue-800 space-y-1">
-            <li>• Promocionar productos con margen superior al 30% para maximizar rentabilidad</li>
-            <li>• Revisar precios de productos con margen inferior al 15%</li>
-            <li>• Analizar costos de productos más vendidos para optimizar ganancias</li>
-            <li>• Considerar descontinuar productos con baja rentabilidad y pocas ventas</li>
-          </ul>
+        
+        <div className="mt-3 p-3 bg-purple-50 rounded-lg">
+          <p className="text-xs text-purple-800">
+            💡 <strong>Análisis mejorado:</strong> Incluye gráficos de distribución por ganancia y rentabilidad. 
+            La tabla muestra el top 20 y es completamente filtrable haciendo clic en las columnas. 
+            Los datos se actualizan automáticamente según los filtros de fecha seleccionados.
+          </p>
         </div>
       </div>
     </div>
