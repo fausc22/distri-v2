@@ -220,7 +220,7 @@ export function VentasAnalytics() {
       {/* ✅ EMPLEADOS - TABLA CON MÉTRICAS DETALLADAS PARA COMISIONES */}
       <div className="bg-white rounded-lg p-6 border border-gray-200">
         <h3 className="text-lg font-medium text-gray-900 mb-4">
-          Performance de Empleados - Datos para Comisiones y Bonos
+          Performance de Empleados 
         </h3>
         
         {gananciasPorEmpleado && gananciasPorEmpleado.length > 0 ? (

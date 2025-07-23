@@ -1,4 +1,4 @@
-// components/reportes/DashboardReportes.jsx - VERSIÓN TOTALMENTE RENOVADA
+// components/reportes/DashboardReportes.jsx - VERSIÓN CON BOTÓN PDF
 import { useEffect, useState } from 'react';
 import { useReportesContext } from '../../context/ReportesContext';
 import { MetricsCard, FinancialMetricsCard, MetricsGrid } from '../charts/MetricsCard';
@@ -74,6 +74,23 @@ export function DashboardReportes() {
       }
   }, [dashboardData, filtros]);
 
+  // ✅ FUNCIÓN PARA MOSTRAR TOAST
+  const mostrarToast = (mensaje) => {
+    // Si tienes una librería de toast como react-hot-toast, react-toastify, etc.
+    // toast.info(mensaje);
+    
+    // Si no tienes una librería, puedes usar alert temporalmente
+    alert(mensaje);
+    
+    // O crear un toast personalizado simple
+    console.log('Toast:', mensaje);
+  };
+
+  // ✅ FUNCIÓN PARA GENERAR REPORTE PDF
+  const generarReportePDF = () => {
+    mostrarToast("Funcionalidad en proceso..");
+  };
+
   if (error && !dashboardData) {
     return (
       <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
@@ -108,21 +125,40 @@ export function DashboardReportes() {
           </p>
         </div>
         
-        <button
-          onClick={() => cargarDashboard()}
-          disabled={isAnyLoading}
-          className="mt-3 sm:mt-0 flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-        >
-          <svg 
-            className={`w-4 h-4 ${isAnyLoading ? 'animate-spin' : ''}`} 
-            fill="none" 
-            stroke="currentColor" 
-            viewBox="0 0 24 24"
+        {/* ✅ BOTONES DE ACCIÓN */}
+        <div className="mt-3 sm:mt-0 flex flex-col sm:flex-row gap-2">
+          <button
+            onClick={() => cargarDashboard()}
+            disabled={isAnyLoading}
+            className="flex items-center justify-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-          </svg>
-          <span>{isAnyLoading ? 'Actualizando...' : 'Actualizar'}</span>
-        </button>
+            <svg 
+              className={`w-4 h-4 ${isAnyLoading ? 'animate-spin' : ''}`} 
+              fill="none" 
+              stroke="currentColor" 
+              viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            <span>{isAnyLoading ? 'Actualizando...' : 'Actualizar'}</span>
+          </button>
+
+          <button
+            onClick={generarReportePDF}
+            disabled={isAnyLoading}
+            className="flex items-center justify-center space-x-2 px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            <svg 
+              className="w-4 h-4" 
+              fill="none" 
+              stroke="currentColor" 
+              viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            <span>GENERAR REPORTE PDF</span>
+          </button>
+        </div>
       </div>
 
       {/* ✅ KPIs Principales */}
@@ -299,7 +335,7 @@ export function DashboardReportes() {
 
       {/* ✅ PERFORMANCE DE EMPLEADOS - TABLA DETALLADA */}
       <div className="bg-white rounded-lg p-6 border border-gray-200">
-        <h3 className="text-lg font-medium text-gray-900 mb-4">Performance de Empleados - Datos para Comisiones</h3>
+        <h3 className="text-lg font-medium text-gray-900 mb-4">Performance de Empleados</h3>
         
         {empleados && empleados.length > 0 ? (
           <div className="overflow-x-auto">
@@ -418,36 +454,6 @@ export function DashboardReportes() {
             subtitle="Ganancia vs Ingresos"
             icon={
               <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-full h-full">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-              </svg>
-            }
-          />
-          
-          <MetricsCard
-            title="Resultado Operativo"
-            value={formatCurrency(resumen?.balance?.resultado_neto || 0)}
-            color={resumen?.balance?.resultado_neto >= 0 ? "blue" : "red"}
-            size="small"
-            loading={isAnyLoading}
-            subtitle="Ingresos - Egresos"
-            icon={
-              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-full h-full">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-              </svg>
-            }
-          />
-          
-          <MetricsCard
-            title="Productividad Empleado"
-            value={empleados?.length > 0 ? 
-              `${(resumen?.ventas?.total_ventas / empleados.length).toFixed(1)} ventas/emp` : 
-              "N/A"}
-            color="purple"
-            size="small"
-            loading={isAnyLoading}
-            subtitle="Ventas por empleado"
-            icon={
-              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-full h-full">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
               </svg>
             }
@@ -472,30 +478,8 @@ export function DashboardReportes() {
         </MetricsGrid>
       </div>
 
-      {/* ✅ INFORMACIÓN DEL SISTEMA */}
-      {dashboardData && (
-        <div className="bg-gradient-to-r from-gray-50 to-blue-50 rounded-lg p-4 border border-gray-200">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-gray-600">
-            <div>
-              <strong>Período analizado:</strong> {evolucionVentas?.length || 0} períodos con datos
-            </div>
-            <div>
-              <strong>Productos activos:</strong> {topProductosTabla?.length || 0} productos con ventas
-            </div>
-            <div>
-              <strong>Empleados activos:</strong> {empleados?.length || 0} vendedores
-            </div>
-          </div>
-          
-          <div className="mt-3 p-3 bg-blue-50 rounded-lg">
-            <p className="text-xs text-blue-800">
-              💡 <strong>Dashboard optimizado:</strong> Se muestran tablas informativas en lugar de gráficos 
-              hasta tener más datos históricos. Los datos geográficos están temporalmente ocultos 
-              hasta normalizar las ciudades en la base de datos.
-            </p>
-          </div>
-        </div>
-      )}
+      
+      
     </div>
   );
 }

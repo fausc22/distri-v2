@@ -571,25 +571,7 @@ export function ProductAnalytics() {
         
       </div>
 
-      {/* ✅ INFORMACIÓN DEL ANÁLISIS */}
-      <div className="bg-gradient-to-r from-gray-50 to-purple-50 rounded-lg p-4 border border-gray-200">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm text-gray-600">
-          <div>
-            <strong>Productos analizados:</strong> {totalProductosVendidos} con ventas
-          </div>
-          <div>
-            <strong>Mostrando:</strong> Top 20 productos
-          </div>
-          <div>
-            <strong>Unidades totales:</strong> {totalCantidadVendida.toLocaleString()} vendidas
-          </div>
-          <div>
-            <strong>Ordenado por:</strong> {sortConfig.key ? `${sortConfig.key} (${sortConfig.direction === 'asc' ? 'Asc' : 'Desc'})` : 'Ganancia estimada'}
-          </div>
-        </div>
-        
-        
-      </div>
+      
     </div>
   );
 }
