@@ -412,6 +412,8 @@ export default function Inicio() {
               <LinkGuard href="/edicion/Proveedores" className="block text-blue-600 hover:text-blue-800 text-sm">• Gestión de Proveedores</LinkGuard>
               <LinkGuard href="/finanzas/fondos" className="block text-blue-600 hover:text-blue-800 text-sm">• Tesorería</LinkGuard>
               <LinkGuard href="/finanzas/reportes" className="block text-blue-600 hover:text-blue-800 text-sm">• Reportes Financieros</LinkGuard>
+              <LinkGuard href="/auditoria/Auditoria" className="block text-blue-600 hover:text-blue-800 text-sm border-t border-gray-200 pt-2 mt-2">•  Auditoría del Sistema</LinkGuard>
+
             </div>
           </div>
         )}

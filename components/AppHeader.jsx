@@ -518,6 +518,13 @@ function AppHeader() {
                       >
                         Empleados
                       </MenuLink>
+                      <MenuLink 
+                        href="/auditoria/Auditoria" 
+                        className="block py-2 px-4 text-sm whitespace-nowrap border-t border-gray-200 mt-1 pt-3"
+                        requiresOnline={true}
+                      >
+                        📋 Auditoría del Sistema
+                      </MenuLink>
                     </>
                   )}
                 </motion.div>
@@ -801,6 +808,13 @@ function AppHeader() {
                           requiresOnline={true}
                         >
                           Empleados
+                        </MenuLink>
+                        <MenuLink 
+                          href="/auditoria/Auditoria" 
+                          className="block py-2 px-4 hover:bg-blue-600 text-white border-t border-blue-400 mt-2 pt-3"
+                          requiresOnline={true}
+                        >
+                          Auditoría del Sistema
                         </MenuLink>
                       </>
                     )}
