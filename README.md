@@ -1,36 +1,94 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# Distri-v2 - Sistema de gestión para distribuidora
 
-## Getting Started
+Distri-v2 es una aplicación web integral para la gestión de una distribuidora, desarrollada con tecnologías modernas para facilitar el control de productos, clientes, ventas y stock.
 
-First, run the development server:
+---
 
+## 🚀 Tecnologías utilizadas
+
+- **Frontend:** Next.js, React, Ant Design  
+- **Backend:** Node.js, Express  
+- **Base de datos:** PostgreSQL  
+- **ORM:** Prisma  
+- **Autenticación:** JWT  
+- **Despliegue:** Railway (opcional)
+
+---
+
+## 📋 Características principales
+
+- Gestión de productos y categorías  
+- Control de stock e inventario  
+- Registro y gestión de clientes  
+- Gestión de ventas y facturación  
+- Sistema de autenticación y roles de usuario  
+- Reportes básicos de ventas e inventario
+
+---
+
+## 📥 Instalación y ejecución local
+
+1. Clonar el repositorio  
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+git clone https://github.com/fausc22/distri-v2.git
+cd distri-v2
+Instalar dependencias para frontend y backend
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+bash
+Copiar
+Editar
+npm install
+cd client
+npm install
+Configurar variables de entorno
+Crea un archivo .env en la raíz con las variables necesarias (ejemplo):
 
-You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
+ini
+Copiar
+Editar
+DATABASE_URL=postgresql://usuario:password@localhost:5432/dbname
+JWT_SECRET=tu_secreto
+Ejecutar migraciones de Prisma
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+bash
+Copiar
+Editar
+npx prisma migrate dev --name init
+Ejecutar backend y frontend en desarrollo
 
-## Learn More
+bash
+Copiar
+Editar
+npm run dev     # para backend
+cd client
+npm run dev     # para frontend
+La app debería estar disponible en http://localhost:3000
 
-To learn more about Next.js, take a look at the following resources:
+📚 Uso
+Acceder a la aplicación con usuario y contraseña (crear usuario admin manualmente en BD la primera vez)
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Navegar entre los módulos de productos, clientes y ventas
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Crear, editar y eliminar registros según permisos
 
-## Deploy on Vercel
+Visualizar reportes básicos desde el dashboard
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+🛠 Estructura del proyecto
+/client: frontend en Next.js y React
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+/server: backend en Node.js y Express
+
+/prisma: esquema de la base de datos y migraciones
+
+🤝 Contribuciones
+Este proyecto está en desarrollo activo.
+Para contribuir:
+
+Abrí un issue para sugerir mejoras o reportar bugs
+
+Enviar pull requests con cambios claros y documentados
+
+📄 Licencia
+Este proyecto está bajo licencia MIT.
+
+¡Gracias por interesarte en Distri-v2! Cualquier duda, contactame.
