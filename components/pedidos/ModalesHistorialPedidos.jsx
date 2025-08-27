@@ -201,10 +201,44 @@ export function ModalFacturacionCompleto({
     facturarPedido 
   } = useFacturacion();
 
-  // Inicializar montos al abrir el modal
+  // ✅ FUNCIÓN PARA DETERMINAR TIPO FISCAL AUTOMÁTICAMENTE
+  const determinarTipoFiscal = (condicionIva) => {
+    if (!condicionIva || typeof condicionIva !== 'string') {
+      console.log('⚠️ Condición IVA no válida, usando C por defecto');
+      return 'C'; // Por defecto Consumidor Final
+    }
+
+    const condicion = condicionIva.trim();
+    console.log('🧾 Determinando tipo fiscal para condición exacta:', condicion);
+
+    // Mapeo exacto según los datos de tu BD
+    switch (condicion) {
+      case 'Responsable Inscripto':
+        console.log('✅ Tipo fiscal seleccionado: A (Responsable Inscripto)');
+        return 'A';
+      case 'Monotributo':
+        console.log('✅ Tipo fiscal seleccionado: B (Monotributo)');
+        return 'B';
+      case 'Consumidor Final':
+        console.log('✅ Tipo fiscal seleccionado: C (Consumidor Final)');
+        return 'C';
+      default:
+        console.log('⚠️ Condición no reconocida:', condicion, '- usando C por defecto');
+        return 'C';
+    }
+  };
+
+  // ✅ USEEFFECT CORREGIDO CON TIMING PERFECTO PARA TIPO FISCAL
   useEffect(() => {
-    if (mostrar && productos && productos.length > 0) {
-      console.log('🧾 Inicializando modal de facturación...');
+    // ✅ VERIFICAR QUE TENEMOS TODOS LOS DATOS NECESARIOS
+    if (mostrar && productos && productos.length > 0 && pedido?.cliente_condicion !== undefined) {
+      console.log('🧾 Inicializando modal de facturación completo...');
+      console.log('📋 Datos del pedido completos:', {
+        id: pedido?.id,
+        cliente: pedido?.cliente_nombre,
+        condicionIva: pedido?.cliente_condicion,
+        tieneProductos: productos.length > 0
+      });
       
       const subtotal = productos.reduce((acc, prod) => acc + (Number(prod.subtotal) || 0), 0);
       const iva = productos.reduce((acc, prod) => acc + (Number(prod.iva) || 0), 0);
@@ -214,14 +248,22 @@ export function ModalFacturacionCompleto({
       setIvaTotal(iva);
       setTotalConIva(total);
       setDescuentoAplicado(null);
-
-      console.log('💰 Montos calculados:', {
-        subtotal: subtotal.toFixed(2),
-        iva: iva.toFixed(2),
-        total: total.toFixed(2)
-      });
+      
+      // ✅ DETERMINAR TIPO FISCAL AUTOMÁTICAMENTE CON DELAY MÍNIMO
+      setTimeout(() => {
+        const tipoFiscalAuto = determinarTipoFiscal(pedido.cliente_condicion);
+        setTipoFiscal(tipoFiscalAuto);
+        
+        console.log('💰 Montos y tipo fiscal establecidos:', {
+          subtotal: subtotal.toFixed(2),
+          iva: iva.toFixed(2),
+          total: total.toFixed(2),
+          tipoFiscalSeleccionado: tipoFiscalAuto,
+          condicionOriginal: pedido.cliente_condicion
+        });
+      }, 50); // Delay mínimo para asegurar que el estado se actualice
     }
-  }, [mostrar, productos]);
+  }, [mostrar, productos, pedido?.cliente_condicion]); // ✅ AGREGAR cliente_condicion como dependencia
 
   useEffect(() => {
     if (mostrar) {
@@ -385,7 +427,6 @@ export function ModalFacturacionCompleto({
                     <option value="">Seleccionar cuenta...</option>
                     {cuentas.map(cuenta => (
                       <option key={cuenta.id} value={cuenta.id}>
-                        {/* ✅ CORREGIDO: Solo mostrar nombre */}
                         {cuenta.nombre}
                       </option>
                     ))}
@@ -395,17 +436,21 @@ export function ModalFacturacionCompleto({
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Tipo fiscal *
+                  <span className="text-xs text-green-600 ml-1">
+                    (Auto-seleccionado)
+                  </span>
                 </label>
                 <select
                   value={tipoFiscal}
                   onChange={(e) => setTipoFiscal(e.target.value)}
-                  className="border p-2 rounded w-full text-sm"
+                  className="border p-2 rounded w-full text-sm font-medium"
                   required
                 >
                   <option value="A">A - Responsable Inscripto</option>
-                  <option value="B">B - Responsable No Inscripto</option>
+                  <option value="B">B - Responsable No Inscripto (Monotributo)</option>
                   <option value="C">C - Consumidor Final</option>
                 </select>
+                
               </div>
             </div>
             
