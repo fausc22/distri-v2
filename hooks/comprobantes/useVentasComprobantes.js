@@ -29,16 +29,28 @@ export const useVentasComprobantes = () => {
       const response = await axiosAuth.get('/ventas/obtener-ventas');
       
       if (response.data && Array.isArray(response.data)) {
-        // Procesar ventas para incluir estado de comprobante
+        // ✅ El backend ya incluye verificación de archivos físicos
         const ventasProcesadas = response.data.map(venta => ({
           ...venta,
-          tieneComprobante: !!venta.comprobante_path,
+          // Usar el campo calculado del backend que verifica archivo físico
+          tieneComprobante: venta.tieneComprobante || venta.archivoExiste || !!venta.comprobante_path,
           fechaFormateada: formatearFecha(venta.fecha),
           montoFormateado: formatearMonto(venta.total)
         }));
 
         setVentas(ventasProcesadas);
         console.log(`✅ ${ventasProcesadas.length} ventas cargadas`);
+        
+        // Log para debug mejorado
+        const conComprobante = ventasProcesadas.filter(v => v.tieneComprobante).length;
+        const conComprobanteBD = ventasProcesadas.filter(v => v.comprobanteEnBD).length;
+        const conArchivoReal = ventasProcesadas.filter(v => v.archivoExiste).length;
+        
+        console.log(`📋 Debug comprobantes detallado:`);
+        console.log(`   - En BD: ${conComprobanteBD}`);
+        console.log(`   - Archivo real: ${conArchivoReal}`);
+        console.log(`   - Estado final: ${conComprobante}`);
+        
       } else {
         console.error('❌ Formato de respuesta inesperado:', response.data);
         setVentas([]);
@@ -55,6 +67,53 @@ export const useVentasComprobantes = () => {
       }
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Función mejorada para refrescar una venta específica
+  const refrescarVentaEspecifica = async (ventaId) => {
+    try {
+      console.log(`🔄 Refrescando venta específica: ${ventaId}`);
+      
+      const response = await axiosAuth.get(`/ventas/obtener-venta/${ventaId}`);
+      
+      if (response.data && response.data.length > 0) {
+        const ventaActualizada = response.data[0];
+        
+        // ✅ También verificar el comprobante físicamente
+        let tieneComprobanteReal = false;
+        if (ventaActualizada.comprobante_path) {
+          try {
+            const verificacionResponse = await axiosAuth.get(`/comprobantes/verificar/venta/${ventaId}`);
+            tieneComprobanteReal = verificacionResponse.data?.data?.archivoExiste || false;
+          } catch (verifyError) {
+            console.warn('No se pudo verificar archivo, usando valor de BD:', verifyError);
+            tieneComprobanteReal = !!ventaActualizada.comprobante_path;
+          }
+        }
+        
+        // Actualizar solo esa venta en el estado
+        setVentas(prevVentas => 
+          prevVentas.map(venta => 
+            venta.id === ventaId 
+              ? {
+                  ...ventaActualizada,
+                  tieneComprobante: tieneComprobanteReal,
+                  archivoExiste: tieneComprobanteReal,
+                  comprobanteEnBD: !!ventaActualizada.comprobante_path,
+                  fechaFormateada: formatearFecha(ventaActualizada.fecha),
+                  montoFormateado: formatearMonto(ventaActualizada.total)
+                }
+              : venta
+          )
+        );
+        
+        console.log(`✅ Venta ${ventaId} actualizada - Comprobante: ${tieneComprobanteReal} (BD: ${!!ventaActualizada.comprobante_path})`);
+      }
+    } catch (error) {
+      console.error(`❌ Error refrescando venta ${ventaId}:`, error);
+      // Fallback: recargar todas las ventas
+      await cargarVentas();
     }
   };
 
@@ -160,7 +219,8 @@ export const useVentasComprobantes = () => {
     handleSearch,
     handleFiltroChange,
     limpiarFiltros,
-    refrescarDatos
+    refrescarDatos,
+    refrescarVentaEspecifica  // ✅ Nueva función
   };
 };
 

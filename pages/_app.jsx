@@ -1,4 +1,4 @@
-// pages/_app.jsx - Con precarga crítica para navegación offline
+// pages/_app.jsx - VERSIÓN CORREGIDA
 import '../styles/globals.css';
 import { useEffect } from 'react';
 import { AnimatePresence } from 'framer-motion';
@@ -11,9 +11,8 @@ import OfflineGuard from '../components/OfflineGuard';
 import PublicLayout from '../components/PublicLayout';
 
 function MyApp({ Component, pageProps }) {
-
-
   const router = useRouter();
+  
   // ✅ PÁGINAS PÚBLICAS - Sin autenticación ni AppHeader
   const publicRoutes = [
     '/login',
@@ -24,19 +23,14 @@ function MyApp({ Component, pageProps }) {
   const isPublicRoute = publicRoutes.some(route => 
     router.pathname.startsWith(route)
   );
+
+  // ✅ TODOS LOS HOOKS DEBEN ESTAR AQUÍ - ANTES DEL RETURN CONDICIONAL
   
-  // ✅ PÁGINAS PÚBLICAS - Layout sin AppHeader
-  if (isPublicRoute) {
-    return (
-      <PublicLayout>
-        <Component {...pageProps} />
-      </PublicLayout>
-    );
-  }
-
-
   // ✅ PRECARGA CRÍTICA PARA PWA OFFLINE
   useEffect(() => {
+    // Solo aplicar lógica PWA en páginas privadas
+    if (isPublicRoute) return;
+    
     // Solo ejecutar en cliente y si hay Service Worker
     if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
       // Detectar si es PWA
@@ -112,10 +106,13 @@ function MyApp({ Component, pageProps }) {
       // Precargar chunks después de la carga inicial
       setTimeout(precargeCriticalChunks, 3000);
     }
-  }, []);
+  }, [isPublicRoute]); // ✅ Dependencia agregada
 
   // ✅ MANEJO DE ERRORES DE RED GLOBAL
   useEffect(() => {
+    // Solo aplicar en páginas privadas
+    if (isPublicRoute) return;
+    
     const handleUnhandledRejection = (event) => {
       // Capturar errores de red durante navegación offline
       if (event.reason && event.reason.message && event.reason.message.includes('fetch')) {
@@ -129,10 +126,13 @@ function MyApp({ Component, pageProps }) {
     return () => {
       window.removeEventListener('unhandledrejection', handleUnhandledRejection);
     };
-  }, []);
+  }, [isPublicRoute]); // ✅ Dependencia agregada
 
   // ✅ DETECCIÓN DE CAMBIOS DE CONECTIVIDAD
   useEffect(() => {
+    // Solo aplicar en páginas privadas
+    if (isPublicRoute) return;
+    
     if (typeof window !== 'undefined') {
       const handleOnline = () => {
         console.log('🌐 Aplicación volvió online');
@@ -158,8 +158,20 @@ function MyApp({ Component, pageProps }) {
         window.removeEventListener('offline', handleOffline);
       };
     }
-  }, []);
+  }, [isPublicRoute]); // ✅ Dependencia agregada
 
+  // ✅ AHORA SÍ - RETURN CONDICIONAL DESPUÉS DE TODOS LOS HOOKS
+  
+  // ✅ PÁGINAS PÚBLICAS - Layout sin AppHeader
+  if (isPublicRoute) {
+    return (
+      <PublicLayout>
+        <Component {...pageProps} />
+      </PublicLayout>
+    );
+  }
+
+  // ✅ PÁGINAS PRIVADAS - Layout completo
   // Permite que cada página defina su propio layout (o ninguno)
   const getLayout = Component.getLayout || ((page) => (
     <DefaultLayout>{page}</DefaultLayout>

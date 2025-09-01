@@ -20,6 +20,7 @@ export default function VentasComprobantes() {
     handleSearch,
     handleFiltroChange,
     refrescarDatos,
+    refrescarVentaEspecifica,  // ✅ Nueva función
     hayFiltrosActivos
   } = useVentasComprobantes();
 
@@ -33,13 +34,16 @@ export default function VentasComprobantes() {
     setModalAbierto(true);
   };
 
-  const cerrarModal = () => {
+  const cerrarModal = async () => {
     setModalAbierto(false);
+    
+    // ✅ Refrescar la venta específica antes de limpiar selección
+    if (ventaSeleccionada?.id) {
+      console.log(`🔄 Refrescando estado de venta ${ventaSeleccionada.id} después de cerrar modal`);
+      await refrescarVentaEspecifica(ventaSeleccionada.id);
+    }
+    
     setVentaSeleccionada(null);
-    // Refrescar datos después de cerrar el modal para actualizar estados
-    setTimeout(() => {
-      refrescarDatos();
-    }, 500);
   };
 
   if (!user) return null;
