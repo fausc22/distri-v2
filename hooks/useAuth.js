@@ -25,11 +25,24 @@ export default function useAuth() {
 
     const initializeAuth = async () => {
       try {
-        // Si estamos en login, no verificar auth
-        if (router.pathname === '/login') {
-          setLoading(false);
-          return;
-        }
+        const publicRoutes = ['/login', '/comprobante-publico'];
+      const isPublicRoute = publicRoutes.some(route => 
+        router.pathname.startsWith(route)
+      );
+      
+      // ✅ Si es ruta pública, no verificar auth
+      if (isPublicRoute) {
+        console.log('🌍 Ruta pública detectada:', router.pathname);
+        setLoading(false);
+        return;
+      }
+
+      // Si estamos en login, no verificar auth
+      if (router.pathname === '/login') {
+        setLoading(false);
+        return;
+      }
+
 
         const token = localStorage.getItem('token');
         

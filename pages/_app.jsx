@@ -3,12 +3,38 @@ import '../styles/globals.css';
 import { useEffect } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { Toaster } from 'react-hot-toast'; 
+import { useRouter } from 'next/router'
 import { AuthProvider } from '../components/AuthProvider';
 import DefaultLayout from '../components/DefaultLayout';
 import AppInitializer from '../components/AppInitializer';
 import OfflineGuard from '../components/OfflineGuard';
+import PublicLayout from '../components/PublicLayout';
 
 function MyApp({ Component, pageProps }) {
+
+
+  const router = useRouter();
+  // ✅ PÁGINAS PÚBLICAS - Sin autenticación ni AppHeader
+  const publicRoutes = [
+    '/login',
+    '/comprobante-publico',  // ✅ NUEVA RUTA PÚBLICA
+  ];
+  
+  // ✅ Verificar si es página pública
+  const isPublicRoute = publicRoutes.some(route => 
+    router.pathname.startsWith(route)
+  );
+  
+  // ✅ PÁGINAS PÚBLICAS - Layout sin AppHeader
+  if (isPublicRoute) {
+    return (
+      <PublicLayout>
+        <Component {...pageProps} />
+      </PublicLayout>
+    );
+  }
+
+
   // ✅ PRECARGA CRÍTICA PARA PWA OFFLINE
   useEffect(() => {
     // Solo ejecutar en cliente y si hay Service Worker
