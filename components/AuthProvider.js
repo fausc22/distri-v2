@@ -4,10 +4,13 @@ import useAuth from '../hooks/useAuth';
 // ✅ Crear contexto
 const AuthContext = createContext();
 
-// ✅ Provider con protección SSR
+// ✅ Provider con protección SSR CORREGIDA
 export function AuthProvider({ children }) {
-  // ✅ PROTECCIÓN SSR: Solo ejecutar useAuth en el cliente
-  const auth = typeof window !== 'undefined' ? useAuth() : {
+  // ✅ SIEMPRE llamar useAuth (cumple rules of hooks)
+  const auth = useAuth();
+  
+  // ✅ PROTECCIÓN SSR: Sobrescribir valores durante SSR
+  const safeAuth = typeof window !== 'undefined' ? auth : {
     user: null,
     loading: true,
     login: () => Promise.resolve(),
@@ -17,7 +20,7 @@ export function AuthProvider({ children }) {
   };
 
   return (
-    <AuthContext.Provider value={auth}>
+    <AuthContext.Provider value={safeAuth}>
       {children}
     </AuthContext.Provider>
   );
