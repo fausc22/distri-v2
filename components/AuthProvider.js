@@ -4,9 +4,17 @@ import useAuth from '../hooks/useAuth';
 // ✅ Crear contexto
 const AuthContext = createContext();
 
-// ✅ Provider simplificado
+// ✅ Provider con protección SSR
 export function AuthProvider({ children }) {
-  const auth = useAuth();
+  // ✅ PROTECCIÓN SSR: Solo ejecutar useAuth en el cliente
+  const auth = typeof window !== 'undefined' ? useAuth() : {
+    user: null,
+    loading: true,
+    login: () => Promise.resolve(),
+    logout: () => {},
+    hasRole: () => false,
+    isAuthenticated: false
+  };
 
   return (
     <AuthContext.Provider value={auth}>
@@ -15,7 +23,7 @@ export function AuthProvider({ children }) {
   );
 }
 
-// ✅ Hook para usar el contexto
+// ✅ Hook para usar el contexto con protección SSR
 export function useAuthContext() {
   const context = useContext(AuthContext);
   
@@ -26,10 +34,20 @@ export function useAuthContext() {
   return context;
 }
 
-// ✅ HOC para proteger rutas (opcional)
+// ✅ HOC para proteger rutas con verificación de hydration
 export function withAuth(Component, requiredRoles = []) {
   return function AuthenticatedComponent(props) {
     const { user, loading, hasRole } = useAuthContext();
+
+    // ✅ PROTECCIÓN SSR: No renderizar contenido sensible durante SSR
+    if (typeof window === 'undefined') {
+      return (
+        <div className="flex justify-center items-center min-h-screen">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          <span className="ml-3">Cargando...</span>
+        </div>
+      );
+    }
 
     if (loading) {
       return (
