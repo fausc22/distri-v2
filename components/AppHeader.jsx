@@ -298,6 +298,13 @@ function AppHeader() {
                   >
                     Modificar Nota de Pedido
                   </MenuLink>
+                  <MenuLink 
+                    href="/ventas/comprobantes" 
+                    className="block py-2 px-4 text-sm whitespace-nowrap"
+                    requiresOnline={true}
+                  >
+                    Gestión de Comprobantes
+                  </MenuLink>
                   {(role === 'GERENTE') && (
                     <>
                       <MenuLink 
@@ -606,6 +613,13 @@ function AppHeader() {
                         requiresOnline={true}
                       >
                         Modificar Nota de Pedido
+                      </MenuLink>
+                      <MenuLink 
+                        href="/ventas/comprobantes" 
+                        className="block py-2 px-4 hover:bg-blue-600 text-white"
+                        requiresOnline={true}
+                      >
+                        Gestión de Comprobantes
                       </MenuLink>
                       {(role === 'GERENTE') && (
                         <>
