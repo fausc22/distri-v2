@@ -1,4 +1,4 @@
-// pages/ventas/Facturacion.jsx - IMPLEMENTACIÓN COMPLETA CON RANKING DE VENTAS
+// pages/ventas/Facturacion.jsx - ACTUALIZADO CON FUNCIONALIDAD VER COMPROBANTE
 import { useState } from 'react';
 import Head from 'next/head';
 import { toast } from 'react-hot-toast';
@@ -20,6 +20,9 @@ import { ModalDetalleVenta } from '../../components/ventas/ModalesHistorialVenta
 import { ModalComprobantesVenta } from '../../components/ventas/ModalComprobantesVenta';
 import { ModalConfirmacionSalida } from '../../components/ventas/ModalesConfirmacion';
 import { BotonAcciones } from '../../components/ventas/BotonAcciones';
+
+// ✅ IMPORTAR axiosAuth para hacer la llamada a la API de comprobantes
+import { axiosAuth } from '../../utils/apiClient';
 
 function HistorialVentasContent() {
   // Estados para modales
@@ -68,7 +71,7 @@ function HistorialVentasContent() {
     limpiarComprobante
   } = useComprobantes();
 
-  // ✅ HOOK ACTUALIZADO con ranking de ventas
+  // Hook para generar PDFs y ranking de ventas
   const {
     // PDF Individual
     generandoPDF,
@@ -94,7 +97,7 @@ function HistorialVentasContent() {
     compartirPDFMultiple,
     cerrarModalPDFMultiple,
 
-    // 🆕 Ranking de Ventas
+    // Ranking de Ventas
     generandoRanking,
     mostrarModalRanking,
     pdfURLRanking,
@@ -158,7 +161,27 @@ function HistorialVentasContent() {
     viewComprobante(selectedVenta.id);
   };
 
-  // ✅ HANDLER ADAPTADO para generar PDF individual
+  // 🆕 NUEVA FUNCIÓN: Handler para ver comprobante desde el modal de detalle
+  const handleVerComprobanteDesdeDetalle = async (ventaId, tipo) => {
+    try {
+      console.log(`👀 Abriendo comprobante: ${tipo}/${ventaId}`);
+      
+      // Usar la misma URL que el sistema de comprobantes
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+      const url = `${apiUrl}/comprobantes/obtener/${tipo}/${ventaId}`;
+      
+      // Abrir en nueva pestaña
+      window.open(url, '_blank', 'noopener,noreferrer');
+      
+      toast.success('Comprobante abierto en nueva pestaña');
+      
+    } catch (error) {
+      console.error('❌ Error abriendo comprobante:', error);
+      toast.error('Error al abrir el comprobante');
+    }
+  };
+
+  // Handler para generar PDF individual
   const handleGenerarPDF = async () => {
     if (!selectedVenta || productos.length === 0) {
       toast.error("Seleccione una venta con productos");
@@ -169,7 +192,7 @@ function HistorialVentasContent() {
     await generarPDFIndividualConModal(selectedVenta, productos);
   };
 
-  // ✅ FUNCIÓN ADAPTADA para imprimir múltiples CON MODAL
+  // Función para imprimir múltiples CON MODAL
   const handleImprimirMultiple = async () => {
     const ventasSeleccionadas = ventasFiltradas.filter(venta => 
       selectedVentas.includes(venta.id)
@@ -189,7 +212,7 @@ function HistorialVentasContent() {
     }
   };
 
-  // 🆕 NUEVO HANDLER para generar ranking de ventas
+  // NUEVO HANDLER para generar ranking de ventas
   const handleGenerarRankingVentas = async () => {
     const ventasSeleccionadas = ventasFiltradas.filter(venta => 
       selectedVentas.includes(venta.id)
@@ -209,8 +232,6 @@ function HistorialVentasContent() {
     const exito = await generarRankingVentas(ventasSeleccionadas);
     
     if (exito) {
-      // Optionalmente limpiar selección después del éxito
-      // clearSelection();
       console.log('✅ Ranking de ventas generado exitosamente');
     }
   };
@@ -305,7 +326,7 @@ function HistorialVentasContent() {
           onCambiarRegistrosPorPagina={cambiarRegistrosPorPagina}
         />
         
-        {/* ✅ BOTÓN ACTUALIZADO CON PROPS PARA RANKING */}
+        {/* BOTÓN ACTUALIZADO CON PROPS PARA RANKING */}
         <BotonAcciones
           selectedVentas={selectedVentas}
           onImprimirMultiple={handleImprimirMultiple}
@@ -313,7 +334,7 @@ function HistorialVentasContent() {
           onSolicitarCAE={handleSolicitarCAE}
           solicitando={false}
           onVolverMenu={handleConfirmarSalida}
-          // ✅ Props para modal PDF múltiple
+          // Props para modal PDF múltiple
           mostrarModalPDFMultiple={mostrarModalPDFMultiple}
           pdfURLMultiple={pdfURLMultiple}
           nombreArchivoMultiple={nombreArchivoMultiple}
@@ -322,7 +343,7 @@ function HistorialVentasContent() {
           onDescargarPDFMultiple={descargarPDFMultiple}
           onCompartirPDFMultiple={compartirPDFMultiple}
           onCerrarModalPDFMultiple={cerrarModalPDFMultiple}
-          // 🆕 Props para ranking de ventas
+          // Props para ranking de ventas
           onGenerarRankingVentas={handleGenerarRankingVentas}
           generandoRanking={generandoRanking}
           mostrarModalRanking={mostrarModalRanking}
@@ -336,7 +357,7 @@ function HistorialVentasContent() {
         />
       </div>
       
-      {/* ✅ MODAL DE DETALLE ADAPTADO */}
+      {/* ✅ MODAL DE DETALLE ACTUALIZADO CON NUEVA PROP */}
       <ModalDetalleVenta
         venta={selectedVenta}
         productos={productos}
@@ -345,7 +366,7 @@ function HistorialVentasContent() {
         onImprimirFacturaIndividual={handleGenerarPDF}
         generandoPDF={generandoPDF}
         cuenta={cuenta}
-        // ✅ Props para modal PDF individual
+        // Props para modal PDF individual
         mostrarModalPDF={mostrarModalPDF}
         pdfURL={pdfURL}
         nombreArchivo={nombreArchivo}
@@ -354,6 +375,8 @@ function HistorialVentasContent() {
         onDescargarPDF={descargarPDF}
         onCompartirPDF={compartirPDF}
         onCerrarModalPDF={cerrarModalPDF}
+        // 🆕 NUEVA PROP: Función para ver comprobante
+        onVerComprobante={handleVerComprobanteDesdeDetalle}
       />
 
       {/* Modal comprobantes */}

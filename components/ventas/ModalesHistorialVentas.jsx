@@ -1,6 +1,7 @@
+// components/ventas/ModalesHistorialVentas.jsx - ACTUALIZADO CON BOTÓN VER COMPROBANTE
 import React, { useState } from "react";
 import { toast } from 'react-hot-toast';
-import { MdDeleteForever, MdExpandMore, MdExpandLess } from "react-icons/md";
+import { MdDeleteForever, MdExpandMore, MdExpandLess, MdRemoveRedEye } from "react-icons/md";
 import { ModalPDFUniversal, BotonGenerarPDFUniversal } from '../shared/ModalPDFUniversal';
 
 // Función helper para formatear fechas
@@ -17,6 +18,27 @@ const formatearFecha = (fecha) => {
     hour12: true
   });
 };
+
+// 🆕 NUEVO COMPONENTE: Botón Ver Comprobante
+function BotonVerComprobante({ venta, onVerComprobante }) {
+  const tieneComprobante = venta?.comprobante_path;
+  
+  return (
+    <button
+      onClick={tieneComprobante ? onVerComprobante : undefined}
+      disabled={!tieneComprobante}
+      className={`text-sm sm:text-lg font-semibold px-4 sm:px-6 py-2 sm:py-3 rounded-lg transition-colors w-full sm:w-1/4 flex items-center justify-center gap-2 ${
+        tieneComprobante
+          ? 'bg-green-600 hover:bg-green-700 text-white cursor-pointer'
+          : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+      }`}
+      title={tieneComprobante ? 'Ver comprobante cargado' : 'No hay comprobante disponible'}
+    >
+      <MdRemoveRedEye className="text-lg" />
+      VER COMPROBANTE
+    </button>
+  );
+}
 
 function InformacionCliente({ venta, expandido, onToggleExpansion }) {
   return (
@@ -338,7 +360,9 @@ export function ModalDetalleVenta({
   subtituloModal,
   onDescargarPDF,
   onCompartirPDF,
-  onCerrarModalPDF
+  onCerrarModalPDF,
+  // 🆕 NUEVA PROP: Función para ver comprobante
+  onVerComprobante
 }) {
   const [clienteExpandido, setClienteExpandido] = useState(false);
 
@@ -360,6 +384,16 @@ export function ModalDetalleVenta({
     onClose();
   };
 
+  // 🆕 HANDLER para ver comprobante
+  const handleVerComprobante = () => {
+    if (venta?.comprobante_path && onVerComprobante) {
+      console.log(`👀 Viendo comprobante de venta ${venta.id}: ${venta.comprobante_path}`);
+      onVerComprobante(venta.id, 'venta');
+    } else {
+      toast.error('No hay comprobante disponible para esta venta');
+    }
+  };
+
   return (
     <>
       <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50 p-2 sm:p-4">
@@ -379,55 +413,61 @@ export function ModalDetalleVenta({
             </div>
 
             {/* Fecha y Estado */}
-          <div className="mb-4">
-            <h4 className="text-sm sm:text-lg font-semibold text-gray-700">
-              <strong>Fecha:</strong> {formatearFecha(venta.fecha)}
-            </h4>
-          </div>
-          
-          {/* Información del Cliente (colapsable) */}
-          <InformacionCliente 
-            venta={venta} 
-            expandido={clienteExpandido}
-            onToggleExpansion={toggleClienteExpansion}
-          />
-
-          {/* Información Adicional */}
-          <InformacionAdicional venta={venta} cuenta={cuenta} />
-          
-          {/* Sección de productos */}
-          <div className="mb-4">
-            <h3 className="text-xl font-semibold mb-4 text-gray-800">Productos de la Venta</h3>
+            <div className="mb-4">
+              <h4 className="text-sm sm:text-lg font-semibold text-gray-700">
+                <strong>Fecha:</strong> {formatearFecha(venta.fecha)}
+              </h4>
+            </div>
             
-            <TablaProductos
-              productos={productos}
-              loading={loading}
+            {/* Información del Cliente (colapsable) */}
+            <InformacionCliente 
+              venta={venta} 
+              expandido={clienteExpandido}
+              onToggleExpansion={toggleClienteExpansion}
             />
 
-            <ResumenTotales productos={productos} venta={venta} />
-          </div>
+            {/* Información Adicional */}
+            <InformacionAdicional venta={venta} cuenta={cuenta} />
             
-            {/* Botones de acción */}
+            {/* Sección de productos */}
+            <div className="mb-4">
+              <h3 className="text-xl font-semibold mb-4 text-gray-800">Productos de la Venta</h3>
+              
+              <TablaProductos
+                productos={productos}
+                loading={loading}
+              />
+
+              <ResumenTotales productos={productos} venta={venta} />
+            </div>
+              
+            {/* ✅ BOTONES DE ACCIÓN ACTUALIZADOS CON EL NUEVO BOTÓN */}
             <div className="mt-6 flex flex-col sm:flex-row gap-4">
               <BotonGenerarPDFUniversal
                 onGenerar={onImprimirFacturaIndividual}
                 loading={generandoPDF}
                 texto="🖨️ IMPRIMIR FACTURA"
-                className="bg-blue-600 hover:bg-blue-700 w-full sm:w-1/3"
+                className="bg-blue-600 hover:bg-blue-700 w-full sm:w-1/4"
               />
               
               {!venta.cae_id && (
                 <button
                   onClick={handleSolicitarCAEDetalle}
-                  className="bg-yellow-600 hover:bg-yellow-700 text-white text-sm sm:text-lg font-semibold px-4 sm:px-6 py-2 sm:py-3 rounded-lg transition-colors w-full sm:w-1/3"
+                  className="bg-yellow-600 hover:bg-yellow-700 text-white text-sm sm:text-lg font-semibold px-4 sm:px-6 py-2 sm:py-3 rounded-lg transition-colors w-full sm:w-1/4"
                 >
                   📋 SOLICITAR CAE
                 </button>
               )}
               
+              {/* 🆕 NUEVO BOTÓN VER COMPROBANTE */}
+              <BotonVerComprobante 
+                venta={venta}
+                onVerComprobante={handleVerComprobante}
+              />
+              
               <button
                 onClick={handleCerrarModal}
-                className="bg-gray-600 hover:bg-gray-700 text-white text-sm sm:text-lg font-semibold px-4 sm:px-6 py-2 sm:py-3 rounded-lg transition-colors w-full sm:w-1/3"
+                className="bg-gray-600 hover:bg-gray-700 text-white text-sm sm:text-lg font-semibold px-4 sm:px-6 py-2 sm:py-3 rounded-lg transition-colors w-full sm:w-1/4"
               >
                 ❌ CERRAR
               </button>
