@@ -159,7 +159,7 @@ export function useEditarPedido() {
     }
 
     const precio = parseFloat(producto.precio) || 0;
-    const cantidad = parseInt(producto.cantidad) || 1;
+    const cantidad = parseFloat(producto.cantidad) || 0.5;
     const descuentoPorcentaje = parseFloat(producto.descuento_porcentaje) || 0;
 
     // Verificar stock antes de actualizar

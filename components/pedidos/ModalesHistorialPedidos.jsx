@@ -849,10 +849,10 @@ export function ModalAgregarProductoPedido({
   mostrar, 
   onClose, 
   onAgregarProducto,
-  productosActuales = [] // Nueva prop para validaciones
+  productosActuales = []
 }) {
-  const [productQuantity, setProductQuantity] = useState(1);
-  const [agregandoProducto, setAgregandoProducto] = useState(false); // ✅ NUEVO ESTADO PARA LOADING
+  const [productQuantity, setProductQuantity] = useState(0.5); // ← INICIAR EN 0.5
+  const [agregandoProducto, setAgregandoProducto] = useState(false);
   
   const {
     busqueda,
@@ -865,41 +865,61 @@ export function ModalAgregarProductoPedido({
     limpiarSeleccion
   } = useProductoSearch();
 
-  // Validar si el producto ya existe en el pedido
+  // Función para formatear cantidad
+  const formatearCantidad = (cantidad) => {
+    const cantidadNum = parseFloat(cantidad);
+    return cantidadNum % 1 === 0 ? cantidadNum.toString() : cantidadNum.toFixed(1);
+  };
+
+  // Manejar cambio de cantidad con decimales
+  const handleCantidadChange = (nuevaCantidad) => {
+    let cantidadFloat = parseFloat(nuevaCantidad) || 0.5;
+    
+    // Redondear a medios más cercano
+    cantidadFloat = Math.round(cantidadFloat * 2) / 2;
+    
+    // Aplicar límites
+    const cantidadValida = Math.max(0.5, Math.min(stockDisponible, cantidadFloat));
+    setProductQuantity(cantidadValida);
+  };
+
+  // Incrementar/decrementar en 0.5
+  const adjustQuantity = (delta) => {
+    if (agregandoProducto) return;
+    const nuevaCantidad = productQuantity + delta;
+    handleCantidadChange(nuevaCantidad);
+  };
+
   const productoYaExiste = (productoId) => {
     return productosActuales.some(prod => prod.producto_id === productoId);
   };
 
-  // Verificar stock disponible
   const stockDisponible = productoSeleccionado?.stock_actual || 0;
   const stockSuficiente = productQuantity <= stockDisponible;
   const productoEsDuplicado = productoSeleccionado ? productoYaExiste(productoSeleccionado.id) : false;
 
   const handleAgregarProducto = async () => {
-    if (!productoSeleccionado || productQuantity < 1) {
+    if (!productoSeleccionado || productQuantity < 0.5) {
       toast.error('Seleccione un producto y una cantidad válida');
       return;
     }
 
-    // Validar duplicado
     if (productoEsDuplicado) {
-      toast.error(`El producto "${productoSeleccionado.nombre}" ya está en el pedido. Use la opción editar para modificar la cantidad.`);
+      toast.error(`El producto "${productoSeleccionado.nombre}" ya está en el pedido.`);
       return;
     }
 
-    // Validar stock
     if (!stockSuficiente) {
       toast.error(`Stock insuficiente. Disponible: ${stockDisponible}, Solicitado: ${productQuantity}`);
       return;
     }
 
-    // ✅ ACTIVAR ESTADO DE LOADING
     setAgregandoProducto(true);
     
     try {
       const exito = await onAgregarProducto(productoSeleccionado, productQuantity);
       if (exito) {
-        setProductQuantity(1);
+        setProductQuantity(0.5);
         limpiarSeleccion();
         onClose();
       }
@@ -907,16 +927,14 @@ export function ModalAgregarProductoPedido({
       console.error('Error agregando producto:', error);
       toast.error('Error al agregar producto');
     } finally {
-      // ✅ DESACTIVAR ESTADO DE LOADING
       setAgregandoProducto(false);
     }
   };
 
   const handleClose = () => {
-    // ✅ NO PERMITIR CERRAR SI ESTÁ PROCESANDO
     if (agregandoProducto) return;
     
-    setProductQuantity(1);
+    setProductQuantity(0.5);
     limpiarSeleccion();
     onClose();
   };
@@ -925,8 +943,6 @@ export function ModalAgregarProductoPedido({
 
   const precio = Number(productoSeleccionado?.precio) || 0;
   const subtotal = precio * productQuantity;
-
-  // ✅ DETERMINAR SI EL BOTÓN DEBE ESTAR DESHABILITADO
   const botonDeshabilitado = productoEsDuplicado || !stockSuficiente || agregandoProducto;
 
   return (
@@ -942,11 +958,11 @@ export function ModalAgregarProductoPedido({
               placeholder="Buscar Producto"
               value={busqueda}
               onChange={(e) => setBusqueda(e.target.value)}
-              disabled={agregandoProducto} // ✅ DESHABILITAR DURANTE PROCESAMIENTO
+              disabled={agregandoProducto}
             />
             <button 
               onClick={buscarProducto}
-              disabled={loading || agregandoProducto} // ✅ DESHABILITAR DURANTE PROCESAMIENTO
+              disabled={loading || agregandoProducto}
               className="bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white p-2 rounded disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               <MdSearch size={24} />
@@ -972,14 +988,14 @@ export function ModalAgregarProductoPedido({
                         productoSeleccionado?.id === product.id ? 'bg-blue-100' : 
                         yaExiste ? 'bg-red-50 opacity-50' : 'hover:bg-gray-100'
                       }`}
-                      onClick={() => !yaExiste && !agregandoProducto && seleccionarProducto(product)} // ✅ NO PERMITIR SELECCIÓN DURANTE PROCESAMIENTO
+                      onClick={() => !yaExiste && !agregandoProducto && seleccionarProducto(product)}
                     >
                       <div className="font-medium text-sm">
                         {product.nombre}
                         {yaExiste && <span className="text-red-600 ml-2">(Ya en pedido)</span>}
                       </div>
                       <div className="text-xs text-gray-600">
-                        Código: {product.id} | Stock: {product.stock_actual}
+                        Código: {product.id} | Stock: {formatearCantidad(product.stock_actual)}
                       </div>
                     </div>
                   );
@@ -999,18 +1015,16 @@ export function ModalAgregarProductoPedido({
                   <p><strong>Precio:</strong> ${precio.toFixed(2)}</p>
                   <p><strong>Stock Disponible:</strong> 
                     <span className={stockDisponible > 0 ? 'text-green-600' : 'text-red-600'}>
-                      {stockDisponible}
+                      {formatearCantidad(stockDisponible)}
                     </span>
                   </p>
                   
-                  {/* Alertas de validación */}
                   {productoEsDuplicado && (
                     <div className="bg-red-100 border border-red-400 text-red-700 px-3 py-2 rounded">
                       ⚠️ Este producto ya está en el pedido
                     </div>
                   )}
                   
-                  {/* ✅ INDICADOR DE PROCESAMIENTO */}
                   {agregandoProducto && (
                     <div className="bg-blue-50 border border-blue-200 text-blue-700 px-3 py-2 rounded">
                       <div className="flex items-center">
@@ -1025,36 +1039,41 @@ export function ModalAgregarProductoPedido({
                     <div className="flex items-center space-x-2">
                       <button 
                         type="button"
-                        disabled={agregandoProducto} // ✅ DESHABILITAR DURANTE PROCESAMIENTO
+                        disabled={productQuantity <= 0.5 || agregandoProducto}
                         className="bg-gray-300 hover:bg-gray-400 disabled:bg-gray-200 disabled:cursor-not-allowed text-black w-8 h-8 rounded flex items-center justify-center transition-colors"
-                        onClick={() => setProductQuantity(Math.max(1, productQuantity - 1))}
+                        onClick={() => adjustQuantity(-0.5)}
                       >
                         -
                       </button>
                       <input 
                         type="number"
-                        disabled={agregandoProducto} // ✅ DESHABILITAR DURANTE PROCESAMIENTO
-                        className={`border p-2 w-16 rounded text-sm text-center disabled:bg-gray-100 disabled:cursor-not-allowed ${
+                        disabled={agregandoProducto}
+                        className={`border p-2 w-20 rounded text-sm text-center disabled:bg-gray-100 disabled:cursor-not-allowed ${
                           !stockSuficiente ? 'border-red-500 bg-red-50' : ''
                         }`}
                         value={productQuantity}
-                        onChange={(e) => setProductQuantity(Math.max(1, Number(e.target.value)))}
-                        min="1"
+                        onChange={(e) => handleCantidadChange(e.target.value)}
+                        min="0.5"
+                        step="0.5"
                         max={stockDisponible}
                       />
                       <button 
                         type="button"
-                        disabled={agregandoProducto} // ✅ DESHABILITAR DURANTE PROCESAMIENTO
+                        disabled={productQuantity >= stockDisponible || agregandoProducto}
                         className="bg-gray-300 hover:bg-gray-400 disabled:bg-gray-200 disabled:cursor-not-allowed text-black w-8 h-8 rounded flex items-center justify-center transition-colors"
-                        onClick={() => setProductQuantity(Math.min(stockDisponible, productQuantity + 1))}
+                        onClick={() => adjustQuantity(0.5)}
                       >
                         +
                       </button>
                     </div>
                     
+                    <p className="text-xs text-gray-500 mt-1">
+                      Cantidad: {formatearCantidad(productQuantity)} (mínimo 0.5)
+                    </p>
+                    
                     {!stockSuficiente && (
                       <p className="text-red-600 text-xs mt-1">
-                        ❌ Stock insuficiente (máximo: {stockDisponible})
+                        ❌ Stock insuficiente (máximo: {formatearCantidad(stockDisponible)})
                       </p>
                     )}
                   </div>
@@ -1072,7 +1091,6 @@ export function ModalAgregarProductoPedido({
                         : 'bg-blue-600 hover:bg-blue-700 text-white'
                     }`}
                   >
-                    {/* ✅ SPINNER EN EL BOTÓN CUANDO ESTÁ PROCESANDO */}
                     {agregandoProducto && (
                       <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
                     )}
@@ -1083,7 +1101,7 @@ export function ModalAgregarProductoPedido({
                         ? 'Producto ya agregado' 
                         : !stockSuficiente 
                           ? 'Stock insuficiente'
-                          : 'Agregar Producto'
+                          : `Agregar ${formatearCantidad(productQuantity)} unidades`
                     }
                   </button>
                 </div>
@@ -1096,7 +1114,7 @@ export function ModalAgregarProductoPedido({
           <div className="flex justify-end mt-4">
             <button 
               onClick={handleClose}
-              disabled={agregandoProducto} // ✅ NO PERMITIR CERRAR DURANTE PROCESAMIENTO
+              disabled={agregandoProducto}
               className="bg-gray-500 hover:bg-gray-600 disabled:bg-gray-400 disabled:cursor-not-allowed text-white px-4 py-2 rounded transition-colors"
             >
               {agregandoProducto ? 'Procesando...' : 'Cancelar'}
@@ -1131,7 +1149,7 @@ export function ModalEditarProductoPedido({
     
     if (producto && !inicializado) {
       console.log('📝 Inicializando valores del modal');
-      setLocalCantidad(Number(producto.cantidad) || 1);
+      setLocalCantidad(Math.max(0.5, parseFloat(producto.cantidad) || 0.5));
       setLocalPrecio(Number(producto.precio) || 0);
       setLocalDescuento(Number(producto.descuento_porcentaje) || 0);
       setGuardando(false);
@@ -1181,23 +1199,34 @@ export function ModalEditarProductoPedido({
 
   // ✅ HANDLERS (NO SON HOOKS)
   const handleCantidadInput = (e) => {
-    if (guardando) return;
-    const valor = parseInt(e.target.value) || 1;
-    const valorValido = Math.max(1, Math.min(stockDisponible, valor));
-    
-    if (valor > stockDisponible) {
-      toast.error(`Stock insuficiente. Máximo: ${stockDisponible}`);
-    }
-    
-    setLocalCantidad(valorValido);
-  };
+      if (guardando) return;
+      let valor = parseFloat(e.target.value) || 0.5; // ← CAMBIAR A parseFloat Y 0.5
+      
+      // Redondear a medios más cercano
+      valor = Math.round(valor * 2) / 2;
+      
+      const valorValido = Math.max(0.5, Math.min(stockDisponible, valor)); // ← MÍNIMO 0.5
+      
+      if (valor > stockDisponible) {
+        toast.error(`Stock insuficiente. Máximo: ${stockDisponible}`);
+      }
+      
+      setLocalCantidad(valorValido);
+    };
 
-  const handleCantidadBoton = (incremento) => {
-    if (guardando) return;
-    const nuevaCantidad = localCantidad + incremento;
-    const valorValido = Math.max(1, Math.min(stockDisponible, nuevaCantidad));
-    setLocalCantidad(valorValido);
-  };
+    const handleCantidadBoton = (incremento) => {
+      if (guardando) return;
+      
+      // Incremento de 0.5 en lugar de 1
+      const nuevoIncremento = incremento > 0 ? 0.5 : -0.5; // ← CAMBIAR A 0.5
+      const nuevaCantidad = localCantidad + nuevoIncremento;
+      
+      // Redondear a medios más cercano
+      const cantidadRedondeada = Math.round(nuevaCantidad * 2) / 2;
+      
+      const valorValido = Math.max(0.5, Math.min(stockDisponible, cantidadRedondeada)); // ← MÍNIMO 0.5
+      setLocalCantidad(valorValido);
+    };
 
   const handlePrecioChange = (e) => {
     if (guardando) return;
@@ -1380,7 +1409,7 @@ export function ModalEditarProductoPedido({
               <div className="flex items-center space-x-2">
                 <button 
                   type="button"
-                  disabled={localCantidad <= 1 || guardando}
+                  disabled={localCantidad <= 0.5 || guardando} // ← CAMBIAR A 0.5
                   className="bg-gray-300 hover:bg-gray-400 disabled:bg-gray-200 disabled:cursor-not-allowed text-black w-8 h-8 rounded flex items-center justify-center transition-colors"
                   onClick={() => handleCantidadBoton(-1)}
                 >
@@ -1389,12 +1418,13 @@ export function ModalEditarProductoPedido({
                 <input 
                   type="number"
                   disabled={guardando}
-                  className={`border p-2 w-16 rounded text-sm text-center disabled:bg-gray-100 ${
+                  className={`border p-2 w-20 rounded text-sm text-center disabled:bg-gray-100 ${
                     !stockSuficiente ? 'border-red-500 bg-red-50' : ''
                   }`}
                   value={localCantidad}
                   onChange={handleCantidadInput}
-                  min="1"
+                  min="0.5" // ← CAMBIAR A 0.5
+                  step="0.5" // ← AGREGAR step
                   max={stockDisponible}
                 />
                 <button 

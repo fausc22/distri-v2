@@ -4,31 +4,78 @@ import { toast } from 'react-hot-toast';
 import { usePedidosContext } from '../../context/PedidosContext';
 import { useProductoSearchHybrid } from '../../hooks/useProductSearchHybrid';
 
+
+  const formatearStock = (stock) => {
+    const stockNum = parseFloat(stock);
+    // Si es entero, mostrar sin decimales. Si es decimal, mostrar con decimales
+    return stockNum % 1 === 0 ? stockNum.toString() : stockNum.toFixed(1);
+  };
+
+
 function ControlCantidad({ cantidad, onCantidadChange, stockDisponible, className = "" }) {
   const handleCantidadChange = (nuevaCantidad) => {
-    const cantidadValida = Math.min(Math.max(1, nuevaCantidad), stockDisponible);
+    let cantidadNum = parseFloat(nuevaCantidad);
+    if (isNaN(cantidadNum)) cantidadNum = 0.5;
+    
+    // Redondear a medios más cercano
+    cantidadNum = Math.round(cantidadNum * 2) / 2;
+    
+    // ✅ CORREGIR LÍMITES - PERMITIR 0.5
+    const cantidadValida = Math.min(Math.max(0.5, cantidadNum), stockDisponible);
+    
     onCantidadChange(cantidadValida);
+  };
+
+  const incrementar = () => {
+    const nuevaCantidad = cantidad + 0.5;
+    if (nuevaCantidad <= stockDisponible) {
+      handleCantidadChange(nuevaCantidad);
+    }
+  };
+
+  const decrementar = () => {
+    // ✅ PERMITIR LLEGAR A 0.5
+    const nuevaCantidad = Math.max(0.5, cantidad - 0.5);
+    handleCantidadChange(nuevaCantidad);
   };
 
   return (
     <div className={`flex items-center space-x-2 ${className}`}>
       <button 
-        className="bg-gray-300 hover:bg-gray-400 text-black w-8 h-8 rounded flex items-center justify-center font-bold"
-        onClick={() => handleCantidadChange(cantidad - 1)}
+        className={`w-8 h-8 rounded flex items-center justify-center font-bold ${
+          cantidad <= 0.5 
+            ? 'bg-gray-200 text-gray-400 cursor-not-allowed' 
+            : 'bg-gray-300 hover:bg-gray-400 text-black'
+        }`}
+        onClick={decrementar}
+        disabled={cantidad <= 0.5} // ✅ DESHABILITAR EN 0.5
       >
         -
       </button>
       <input
         type="number"
         value={cantidad}
-        onChange={(e) => handleCantidadChange(Number(e.target.value))}
-        min="1"
+        onChange={(e) => handleCantidadChange(e.target.value)}
+        min="0.5"
+        step="0.5"
         max={stockDisponible}
-        className="w-16 p-2 rounded text-black border border-gray-300 text-center"
+        className="w-20 p-2 rounded text-black border border-gray-300 text-center"
+        onBlur={(e) => {
+          // ✅ VALIDAR AL PERDER FOCO
+          const valor = parseFloat(e.target.value);
+          if (isNaN(valor) || valor < 0.5) {
+            handleCantidadChange(0.5);
+          }
+        }}
       />
       <button 
-        className="bg-gray-300 hover:bg-gray-400 text-black w-8 h-8 rounded flex items-center justify-center font-bold"
-        onClick={() => handleCantidadChange(cantidad + 1)}
+        className={`w-8 h-8 rounded flex items-center justify-center font-bold ${
+          cantidad >= stockDisponible
+            ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+            : 'bg-gray-300 hover:bg-gray-400 text-black'
+        }`}
+        onClick={incrementar}
+        disabled={cantidad >= stockDisponible}
       >
         +
       </button>
@@ -44,8 +91,7 @@ function DetallesProducto({ producto, cantidad, subtotal, onCantidadChange, onAg
   return (
     <div className="mt-4">
       <div className={`mb-2 text-xl font-bold ${producto.stock_actual > 0 ? 'text-green-700' : 'text-red-600'}`}>
-        STOCK DISPONIBLE: {producto.stock_actual}
-        {/* ✅ INDICADOR DE ORIGEN DEL DATO */}
+        STOCK DISPONIBLE: {formatearStock(producto.stock_actual)} {/* ← USAR LA FUNCIÓN */}
         {isPWA && (
           <span className={`ml-2 text-xs px-2 py-1 rounded ${
             isOnline ? 'bg-green-100 text-green-800' : 'bg-orange-100 text-orange-800'
@@ -55,7 +101,7 @@ function DetallesProducto({ producto, cantidad, subtotal, onCantidadChange, onAg
         )}
       </div>
       <div className="mb-2 text-black">
-        Precio unitario: ${producto.precio}
+        Precio unitario: ${parseFloat(producto.precio).toFixed(2)}
       </div>
       
       <div className="flex items-center gap-4 mb-4">
@@ -63,30 +109,33 @@ function DetallesProducto({ producto, cantidad, subtotal, onCantidadChange, onAg
         <ControlCantidad 
           cantidad={cantidad}
           onCantidadChange={onCantidadChange}
-          stockDisponible={producto.stock_actual}
+          stockDisponible={parseFloat(producto.stock_actual)}
         />
+        <span className="text-sm text-gray-600">
+          (mínimo 0.5)
+        </span>
       </div>
 
       {stockInsuficiente && (
         <div className="text-red-600 font-semibold mb-2">
-          ⚠️ Stock insuficiente. Máximo disponible: {producto.stock_actual}
+          ⚠️ Stock insuficiente. Máximo disponible: {formatearStock(producto.stock_actual)} {/* ← USAR LA FUNCIÓN */}
         </div>
       )}
 
       <div className="text-black font-semibold mb-4">
-        Subtotal: ${Number(subtotal).toFixed(2)}
+        Subtotal: ${parseFloat(subtotal).toFixed(2)}
       </div>
 
       <button
         onClick={onAgregar}
-        disabled={stockInsuficiente || producto.stock_actual === 0}
+        disabled={stockInsuficiente || producto.stock_actual <= 0}
         className={`px-6 py-2 rounded font-semibold ${
-          stockInsuficiente || producto.stock_actual === 0
+          stockInsuficiente || producto.stock_actual <= 0
             ? 'bg-gray-400 text-gray-600 cursor-not-allowed'
             : 'bg-green-600 hover:bg-green-800 text-white'
         }`}
       >
-        {producto.stock_actual === 0 ? 'Sin Stock' : 'Agregar Producto'}
+        {producto.stock_actual <= 0 ? 'Sin Stock' : `Agregar ${formatearStock(cantidad)} unidades`} {/* ← USAR LA FUNCIÓN */}
       </button>
     </div>
   );
@@ -146,7 +195,7 @@ function ModalProductos({
                     <span className={`text-sm ${
                       producto.stock_actual > 0 ? 'text-green-600' : 'text-red-600'
                     }`}>
-                      Stock: {producto.stock_actual}
+                      Stock: {formatearStock(producto.stock_actual)} 
                     </span>
                     {/* ✅ BADGE DE ORIGEN PARA CADA PRODUCTO */}
                     

@@ -1,19 +1,40 @@
 import { usePedidosContext } from '../../context/PedidosContext';
 
 function ControlCantidad({ cantidad, onCantidadChange }) {
+  const formatearCantidad = (cantidad) => {
+    const cantidadNum = parseFloat(cantidad);
+    return cantidadNum % 1 === 0 ? cantidadNum.toString() : cantidadNum.toFixed(1);
+  };
+
+  const incrementar = () => {
+    const nuevaCantidad = parseFloat(cantidad) + 0.5;
+    onCantidadChange(nuevaCantidad);
+  };
+
+  const decrementar = () => {
+    const nuevaCantidad = Math.max(0.5, parseFloat(cantidad) - 0.5);
+    onCantidadChange(nuevaCantidad);
+  };
+
   return (
     <div className="flex items-center justify-center space-x-2">
       <button 
-        className="bg-gray-300 hover:bg-gray-400 text-black w-6 h-6 rounded flex items-center justify-center"
-        onClick={() => onCantidadChange(cantidad - 1)}
-        disabled={cantidad <= 1}
+        className={`w-6 h-6 rounded flex items-center justify-center ${
+          cantidad <= 0.5 
+            ? 'bg-gray-200 text-gray-400 cursor-not-allowed' 
+            : 'bg-gray-300 hover:bg-gray-400 text-black'
+        }`}
+        onClick={decrementar}
+        disabled={cantidad <= 0.5}
       >
         -
       </button>
-      <span className="mx-2 font-medium">{cantidad}</span>
+      <span className="mx-2 font-medium min-w-[40px] text-center">
+        {formatearCantidad(cantidad)}
+      </span>
       <button 
         className="bg-gray-300 hover:bg-gray-400 text-black w-6 h-6 rounded flex items-center justify-center"
-        onClick={() => onCantidadChange(cantidad + 1)}
+        onClick={incrementar}
       >
         +
       </button>
@@ -22,6 +43,11 @@ function ControlCantidad({ cantidad, onCantidadChange }) {
 }
 
 function TablaEscritorio({ productos, onActualizarCantidad, onEliminar }) {
+  const formatearCantidad = (cantidad) => {
+    const cantidadNum = parseFloat(cantidad);
+    return cantidadNum % 1 === 0 ? cantidadNum.toString() : cantidadNum.toFixed(1);
+  };
+
   return (
     <div className="hidden md:block overflow-x-auto bg-white rounded shadow text-black">
       <table className="w-full">
@@ -50,10 +76,13 @@ function TablaEscritorio({ productos, onActualizarCantidad, onEliminar }) {
                 </td>
                 <td className="p-3 text-center">{prod.unidad_medida || 'Unidad'}</td>
                 <td className="p-3 text-center">
-                  <ControlCantidad
-                    cantidad={prod.cantidad}
-                    onCantidadChange={(nuevaCantidad) => onActualizarCantidad(idx, nuevaCantidad)}
-                  />
+                  <div className="flex flex-col items-center">
+                    <ControlCantidad
+                      cantidad={prod.cantidad}
+                      onCantidadChange={(nuevaCantidad) => onActualizarCantidad(idx, nuevaCantidad)}
+                    />
+                    
+                  </div>
                 </td>
                 <td className="p-3 text-center font-medium">${Number(prod.precio).toFixed(2)}</td>
                 <td className="p-3 text-center">{prod.porcentaje_iva}%</td>
@@ -82,6 +111,11 @@ function TablaEscritorio({ productos, onActualizarCantidad, onEliminar }) {
 }
 
 function TarjetasMovil({ productos, onActualizarCantidad, onEliminar }) {
+  const formatearCantidad = (cantidad) => {
+    const cantidadNum = parseFloat(cantidad);
+    return cantidadNum % 1 === 0 ? cantidadNum.toString() : cantidadNum.toFixed(1);
+  };
+
   return (
     <div className="md:hidden space-y-4">
       {productos.length > 0 ? (
@@ -106,7 +140,7 @@ function TarjetasMovil({ productos, onActualizarCantidad, onEliminar }) {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <div>
-                  <span className="text-gray-600 text-sm">Cantidad:</span>
+                  <span className="text-gray-600 text-sm">Cantidad: {formatearCantidad(prod.cantidad)}</span>
                   <div className="mt-1">
                     <ControlCantidad
                       cantidad={prod.cantidad}
@@ -147,7 +181,16 @@ export default function ProductosCarrito() {
   const { productos, updateCantidad, removeProducto, subtotal, totalIva, total } = usePedidosContext();
 
   const handleActualizarCantidad = (index, nuevaCantidad) => {
-    const cantidadValida = Math.max(1, nuevaCantidad);
+    // Convertir a float y redondear a medios
+    let cantidadFloat = parseFloat(nuevaCantidad);
+    if (isNaN(cantidadFloat)) cantidadFloat = 0.5;
+    
+    // Redondear a 0.5 más cercano
+    cantidadFloat = Math.round(cantidadFloat * 2) / 2;
+    
+    // Aplicar mínimo de 0.5
+    const cantidadValida = Math.max(0.5, cantidadFloat);
+    
     updateCantidad(index, cantidadValida);
   };
 

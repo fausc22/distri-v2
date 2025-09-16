@@ -59,19 +59,25 @@ export function useProductoSearchHybrid() {
     }
   };
 
-  const seleccionarProducto = (producto) => {
-    setProductoSeleccionado(producto);
-    setCantidad(1);
-    setSubtotal(parseFloat(Number(producto.precio).toFixed(2)));
-  };
 
-  const actualizarCantidad = (nuevaCantidad) => {
-    const cantidadValida = Math.max(1, nuevaCantidad);
-    setCantidad(cantidadValida);
-    if (productoSeleccionado) {
-      setSubtotal(parseFloat((productoSeleccionado.precio * cantidadValida).toFixed(2)));
-    }
-  };
+
+  
+
+
+    const seleccionarProducto = (producto) => {
+      setProductoSeleccionado(producto);
+      setCantidad(1.0); // ← CAMBIAR a 1.0 para asegurar decimal
+      setSubtotal(parseFloat(Number(producto.precio).toFixed(2)));
+    };
+
+    const actualizarCantidad = (nuevaCantidad) => {
+      // ✅ PERMITIR 0.5 COMO MÍNIMO EN LUGAR DE 1
+      const cantidadValida = Math.max(0.5, parseFloat(nuevaCantidad));
+      setCantidad(cantidadValida);
+      if (productoSeleccionado) {
+        setSubtotal(parseFloat((productoSeleccionado.precio * cantidadValida).toFixed(2)));
+      }
+    };
 
   const limpiarSeleccion = () => {
     setProductoSeleccionado(null);
